@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking confirmed — Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-[#f5f0eb] font-sans text-[#2c3e50] antialiased">
+    <div class="px-4 py-10 md:py-14">
+        <!-- Above card -->
+        <header class="mx-auto max-w-[560px] text-center">
+            <h1 class="text-[2.5rem] font-semibold leading-tight text-[#2c3e50]">Success!</h1>
+            <p class="mt-2 text-[1.1rem] text-[#5a5a5a]">Your dental consultation is booked.</p>
+        </header>
+
+        <!-- White card -->
+        <div class="mx-auto mt-8 max-w-[560px] rounded-2xl bg-white p-10 shadow-sm border border-black/5">
+            <h2 class="mb-8 text-center text-[0.85rem] font-semibold uppercase tracking-[0.1em] text-[#2c3e50]">What to do next</h2>
+
+            <div class="space-y-10">
+                <section class="flex flex-col items-center text-center">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#22ccb2] text-base font-semibold text-white" aria-hidden="true">1</div>
+                    <h3 class="mt-3 text-base font-semibold text-[#22ccb2]">Confirmation</h3>
+                    <p class="mx-auto mt-2 max-w-[380px] text-[0.9rem] leading-relaxed text-[#5a5a5a]">
+                        The clinic will contact you to confirm your appointment.
+                    </p>
+                </section>
+                <section class="flex flex-col items-center text-center">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#22ccb2] text-base font-semibold text-white" aria-hidden="true">2</div>
+                    <h3 class="mt-3 text-base font-semibold text-[#22ccb2]">Calendar Your Schedule</h3>
+                    <p class="mx-auto mt-2 max-w-[380px] text-[0.9rem] leading-relaxed text-[#5a5a5a]">
+                        Take note of your appointment details and make sure to arrive on time.
+                        Our team will confirm your booking shortly.
+                    </p>
+                </section>
+                <section class="flex flex-col items-center text-center">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#22ccb2] text-base font-semibold text-white" aria-hidden="true">3</div>
+                    <h3 class="mt-3 text-base font-semibold text-[#22ccb2]">Prepare Your Questions</h3>
+                    <p class="mx-auto mt-2 max-w-[380px] text-[0.9rem] leading-relaxed text-[#5a5a5a]">
+                        Write down your concerns ahead of time. It will help to bring
+                        any related documents such as X-ray results or dental records
+                        to assist our dentist in giving you the best recommendations.
+                    </p>
+                </section>
+            </div>
+
+            <div class="mt-8 mb-6 border-t border-[#e0e0e0]"></div>
+
+            <div class="rounded-xl bg-[#e8f8f5] p-4">
+                <dl class="space-y-3 text-sm">
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <dt class="min-w-[7.5rem] shrink-0 text-[#5a5a5a]">Date</dt>
+                        <dd id="summaryDate" class="font-medium text-[#2c3e50]"></dd>
+                    </div>
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <dt class="min-w-[7.5rem] shrink-0 text-[#5a5a5a]">Time</dt>
+                        <dd id="summaryTime" class="font-medium text-[#2c3e50]"></dd>
+                    </div>
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <dt class="min-w-[7.5rem] shrink-0 text-[#5a5a5a]">Service</dt>
+                        <dd id="summaryReason" class="font-medium text-[#2c3e50]"></dd>
+                    </div>
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <dt class="min-w-[7.5rem] shrink-0 text-[#5a5a5a]">Dentist</dt>
+                        <dd id="summaryDentist" class="font-medium text-[#2c3e50]"></dd>
+                    </div>
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <dt class="min-w-[7.5rem] shrink-0 text-[#5a5a5a]">Payment</dt>
+                        <dd id="summaryPayment" class="font-medium text-[#2c3e50]"></dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:justify-center">
+                <a href="dashboard.html" class="inline-flex items-center justify-center rounded-xl bg-[#22ccb2] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1bab96]">
+                    Go to My Dashboard
+                </a>
+                <a href="book.html" class="inline-flex items-center justify-center rounded-xl border-2 border-[#22ccb2] bg-transparent px-8 py-3 text-sm font-semibold text-[#22ccb2] transition hover:bg-[#22ccb2]/5">
+                    Book Another Appointment
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function () {
+    const AUTH_API = '../../api/patient_auth.php';
+
+    (async function init() {
+        try {
+            const res = await fetch(AUTH_API + '?action=me', { credentials: 'same-origin' });
+            if (!res.ok) {
+                window.location.replace('../login.html');
+                return;
+            }
+        } catch (e) {
+            window.location.replace('../login.html');
+            return;
+        }
+
+        var summary = {};
+        try {
+            summary = JSON.parse(sessionStorage.getItem('booking_summary') || '{}');
+        } catch (err) {
+            summary = {};
+        }
+
+        if (!summary.date || !summary.time) {
+            window.location.replace('dashboard.html');
+            return;
+        }
+
+        var parts = String(summary.date).split('-');
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10);
+        var d = parseInt(parts[2], 10);
+        var dateStr = new Date(y, m - 1, d).toLocaleDateString('en-PH', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        var tp = String(summary.time).split(':');
+        var h = parseInt(tp[0], 10);
+        var min = tp[1] != null ? String(tp[1]).padStart(2, '0') : '00';
+        if (isNaN(h)) h = 0;
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        var hour = h % 12 || 12;
+        var timeStr = hour + ':' + min + ' ' + ampm;
+
+        document.getElementById('summaryDate').textContent = dateStr;
+        document.getElementById('summaryTime').textContent = timeStr;
+        var reasonEl = document.getElementById('summaryReason');
+        if (reasonEl) {
+            reasonEl.textContent = summary.reason || '—';
+        }
+        document.getElementById('summaryDentist').textContent = summary.dentist || 'Our dental team';
+        var payEl = document.getElementById('summaryPayment');
+        if (payEl) {
+            payEl.textContent = summary.payment_method || '—';
+        }
+
+        sessionStorage.removeItem('booking_summary');
+    })();
+})();
+    </script>
+</body>
+</html>

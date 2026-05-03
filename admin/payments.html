@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'},fontFamily:{inter:['Inter','sans-serif']}}}}}</script>
+</head>
+<body class="font-inter bg-neutral min-h-screen flex">
+    <div id="sidebarMount"></div>
+    <div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+        <div id="headerMount"></div>
+        <main class="pt-20 px-6 pb-8">
+
+            <!-- Action Bar -->
+            <div class="flex flex-wrap justify-between items-center mb-5 gap-3">
+                <div class="flex items-center gap-3">
+                    <button id="addPaymentBtn" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg flex items-center gap-2 text-sm font-medium transition-colors">
+                        <i class="fas fa-plus"></i> Add Payment
+                    </button>
+                    <select id="statusFilter" class="pl-3 pr-8 py-2 rounded-lg border border-neutral-dark bg-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <option value="">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Partial">Partial</option>
+                        <option value="Refunded">Refunded</option>
+                    </select>
+                </div>
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search payments..." class="pl-10 pr-4 py-2 rounded-lg bg-white border border-neutral-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-64">
+                    <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card">
+                    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Collected</p>
+                    <p class="text-2xl font-bold text-primary" id="statPaid">₱0</p>
+                    <p class="text-xs text-gray-400 mt-1">Paid payments</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card">
+                    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Pending</p>
+                    <p class="text-2xl font-bold text-amber-500" id="statPending">₱0</p>
+                    <p class="text-xs text-gray-400 mt-1"><span id="pendingCount">0</span> outstanding bills</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card">
+                    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Records</p>
+                    <p class="text-2xl font-bold text-secondary" id="statTotal">0</p>
+                    <p class="text-xs text-gray-400 mt-1">All payment entries</p>
+                </div>
+            </div>
+
+            <!-- Payments Table -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-neutral-dark">
+                                <th class="px-4 py-3">Patient</th>
+                                <th class="px-4 py-3">Description</th>
+                                <th class="px-4 py-3">Amount</th>
+                                <th class="px-4 py-3">Method</th>
+                                <th class="px-4 py-3">Date</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3 text-right">Receipt</th>
+                                <th class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentTable" class="divide-y divide-neutral-dark">
+                            <tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">Loading payments...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Payment Modal -->
+    <div id="paymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+        <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-lg mx-4 modal-box">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-semibold text-secondary text-xl" id="paymentModalTitle">Add Payment</h3>
+                <button onclick="closeModal('paymentModal')" class="text-gray-400 hover:text-secondary"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <form id="paymentForm">
+                <input type="hidden" id="paymentId">
+                <div class="space-y-4 mb-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Patient <span class="text-red-400">*</span></label>
+                        <select id="fPatient" required class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none">
+                            <option value="">Select patient</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-red-400">*</span></label>
+                        <input type="text" id="fDesc" required placeholder="e.g. Teeth Cleaning" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₱) <span class="text-red-400">*</span></label>
+                            <input type="number" id="fAmount" required min="0" step="0.01" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Payment method <span class="text-red-400">*</span></label>
+                            <select id="fMethod" required class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none">
+                                <option value="">Select method</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Card">Card</option>
+                                <option value="GCash">GCash</option>
+                                <option value="Insurance">Insurance</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="fStatus" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none">
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Partial">Partial</option>
+                            <option value="Refunded">Refunded</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('paymentModal')" class="px-4 py-2 bg-neutral-dark text-secondary rounded-lg text-sm font-medium">Cancel</button>
+                    <button type="submit" id="savePaymentBtn" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../assets/js/layout.js"></script>
+    <script src="../assets/js/app.js"></script>
+    <script>
+    document.getElementById('sidebarMount').innerHTML = getSidebarHTML('payments');
+    document.getElementById('headerMount').innerHTML = getHeaderHTML('Payments');
+
+    let patients = [];
+    let editingId = null;
+    let clinicHeader = {};
+    let receiptFormat = 'simple';
+    let lastPayments = [];
+
+    function escHtml(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    }
+
+    const PAYMENT_METHOD_OPTIONS = ['Cash', 'Card', 'GCash', 'Insurance'];
+    function normalizePaymentMethodForSelect(m) {
+        const map = { 'Credit Card': 'Card', 'Bank Transfer': 'Insurance', 'PhilHealth': 'Insurance', 'HMO': 'Insurance' };
+        const v = map[m] || m;
+        return PAYMENT_METHOD_OPTIONS.includes(v) ? v : 'Cash';
+    }
+
+    function printPaymentReceiptById(id) {
+        const p = lastPayments.find(x => String(x.id) === String(id));
+        if (!p) { showToast('Payment not found in list.', 'error'); return; }
+        printPaymentReceipt(p);
+    }
+
+    function printPaymentReceipt(p) {
+        const h = clinicHeader || {};
+        const detailed = receiptFormat === 'detailed';
+        const extra = detailed
+            ? `<p class="small">Patient #: ${escHtml(p.patient_number)}</p><p class="small">Record ID: ${escHtml(p.id)}</p>`
+            : '';
+        const w = window.open('', '_blank', 'width=400,height=600');
+        if (!w) { showToast('Allow pop-ups to print receipt.', 'warning'); return; }
+        w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
+            <style>
+                body{font-family:system-ui,sans-serif;padding:24px;max-width:360px;margin:0 auto;color:#222}
+                .hdr{text-align:center;border-bottom:2px solid #22ccb2;padding-bottom:12px;margin-bottom:16px}
+                .hdr h1{font-size:1.1rem;margin:0 0 4px}
+                .hdr p{margin:2px 0;font-size:0.8rem;color:#555}
+                .row{display:flex;justify-content:space-between;margin:6px 0;font-size:0.9rem}
+                .amt{font-size:1.25rem;font-weight:700;margin-top:12px;text-align:center}
+                .small{font-size:0.75rem;color:#666}
+            </style></head><body>
+            <div class="hdr">
+                <h1>${escHtml(h.clinic_name || 'Dental Clinic')}</h1>
+                ${h.dentist_name ? `<p>${escHtml(h.dentist_name)}</p>` : ''}
+                ${h.prc_license ? `<p class="small">PRC: ${escHtml(h.prc_license)}</p>` : ''}
+                ${h.clinic_contact ? `<p>${escHtml(h.clinic_contact)}</p>` : ''}
+                ${h.clinic_hours ? `<p class="small">${escHtml(h.clinic_hours)}</p>` : ''}
+            </div>
+            <p class="small">Receipt / payment record</p>
+            <div class="row"><span>Patient</span><span>${escHtml(p.patient_name)}</span></div>
+            ${extra}
+            <div class="row"><span>Description</span><span>${escHtml(p.description || '—')}</span></div>
+            <div class="row"><span>Method</span><span>${escHtml(p.payment_method)}</span></div>
+            <div class="row"><span>Status</span><span>${escHtml(p.status)}</span></div>
+            <div class="row"><span>Date</span><span>${p.payment_date ? escHtml(formatDate(p.payment_date)) : '—'}</span></div>
+            <p class="amt">${escHtml(formatMoney(p.amount))}</p>
+            <script>window.onload=function(){window.print();}<\/script>
+            </body></html>`);
+        w.document.close();
+    }
+
+    async function init() {
+        await checkAuth();
+        // Load patients for select
+        try {
+            patients = await api.get('patients.php');
+            const sel = document.getElementById('fPatient');
+            patients.forEach(p => sel.appendChild(new Option(`${p.first_name} ${p.last_name}`, p.id)));
+        } catch (e) {}
+        loadPayments();
+    }
+
+    async function loadPayments() {
+        const status = document.getElementById('statusFilter').value;
+        const search = document.getElementById('searchInput').value;
+        try {
+            const data = await api.get('payments.php', { status, search });
+            const payments = data.payments || [];
+            const stats = data.stats || {};
+            lastPayments = payments;
+            clinicHeader = data.clinic_header || {};
+            receiptFormat = data.receipt_format === 'detailed' ? 'detailed' : 'simple';
+
+            // Stats
+            document.getElementById('statPaid').textContent = formatMoney(stats.total_paid);
+            document.getElementById('statPending').textContent = formatMoney(stats.total_pending);
+            document.getElementById('pendingCount').textContent = stats.pending_count || 0;
+            document.getElementById('statTotal').textContent = stats.total_count || 0;
+
+            // Table
+            if (payments.length === 0) {
+                document.getElementById('paymentTable').innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">No payments found.</td></tr>`;
+                return;
+            }
+            document.getElementById('paymentTable').innerHTML = payments.map(p => {
+                const paymentId = parseInt(p.id, 10) || 0;
+                const patientName = escHtml(p.patient_name || '');
+                const patientNumber = escHtml(p.patient_number || '');
+                const description = escHtml(p.description || '—');
+                const paymentMethod = escHtml(p.payment_method || '');
+                const paymentStatus = escHtml(p.status || '');
+                return `
+                <tr class="hover:bg-neutral/50 transition-colors">
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">${escHtml(getInitials(p.patient_name || ''))}</div>
+                            <div>
+                                <p class="text-sm font-medium text-secondary">${patientName}</p>
+                                <p class="text-xs text-gray-400">${patientNumber}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-secondary">${description}</td>
+                    <td class="px-4 py-3 text-sm font-semibold text-secondary">${formatMoney(p.amount)}</td>
+                    <td class="px-4 py-3 text-sm text-secondary">
+                        <span class="px-2 py-1 bg-neutral-dark rounded text-xs">${paymentMethod}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-secondary">${p.payment_date ? formatDate(p.payment_date) : '—'}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full font-medium ${getStatusClass(p.status)}">${paymentStatus}</span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button type="button" onclick="printPaymentReceiptById(${paymentId})" class="px-2 py-1 bg-neutral-dark text-secondary rounded-lg text-xs hover:bg-gray-200 font-medium" title="Print receipt"><i class="fas fa-receipt"></i></button>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="flex justify-end gap-1">
+                            ${p.status === 'Pending' ? `<button onclick="markPaid(${paymentId})" class="px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs hover:bg-green-100 font-medium">Mark Paid</button>` : ''}
+                            <button onclick="editPayment(${paymentId})" class="p-1.5 bg-accent/10 text-accent rounded-lg hover:bg-accent/20"><i class="fas fa-edit text-xs"></i></button>
+                            <button onclick="deletePayment(${paymentId})" class="p-1.5 bg-red-50 text-red-400 rounded-lg hover:bg-red-100"><i class="fas fa-trash text-xs"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            showToast('Failed to load payments: ' + e.message, 'error');
+        }
+    }
+
+    async function markPaid(id) {
+        try {
+            await api.put(`payments.php?id=${id}`, { status: 'Paid' });
+            showToast('Payment marked as paid!');
+            loadPayments();
+        } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function editPayment(id) {
+        editingId = id;
+        document.getElementById('paymentModalTitle').textContent = 'Edit Payment';
+        document.getElementById('paymentId').value = id;
+        try {
+            const row = await api.get('payments.php', { id });
+            document.getElementById('fPatient').value = String(row.patient_id || '');
+            document.getElementById('fDesc').value = row.description || '';
+            document.getElementById('fAmount').value = row.amount != null ? String(row.amount) : '';
+            document.getElementById('fMethod').value = normalizePaymentMethodForSelect(row.payment_method || 'Cash');
+            document.getElementById('fStatus').value = row.status || 'Pending';
+        } catch (e) {
+            showToast('Could not load payment: ' + e.message, 'error');
+        }
+        openModal('paymentModal');
+    }
+
+    async function deletePayment(id) {
+        if (!confirm('Delete this payment record?')) return;
+        try {
+            await api.delete(`payments.php?id=${id}`);
+            showToast('Payment deleted.');
+            loadPayments();
+        } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    // Add
+    document.getElementById('addPaymentBtn').addEventListener('click', () => {
+        document.getElementById('paymentModalTitle').textContent = 'Add Payment';
+        document.getElementById('paymentForm').reset();
+        document.getElementById('paymentId').value = '';
+        document.getElementById('fMethod').value = 'Cash';
+        editingId = null;
+        openModal('paymentModal');
+    });
+
+    // Form submit
+    document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = document.getElementById('paymentId').value;
+        const mid = document.getElementById('fMethod').value;
+        if (!mid) {
+            showToast('Please select a payment method.', 'error');
+            return;
+        }
+        const body = {
+            patient_id: document.getElementById('fPatient').value,
+            description: document.getElementById('fDesc').value,
+            amount: document.getElementById('fAmount').value,
+            payment_method: mid,
+            status: document.getElementById('fStatus').value,
+            appointment_id: null
+        };
+        const btn = document.getElementById('savePaymentBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+        try {
+            if (id) {
+                await api.put(`payments.php?id=${id}`, body);
+                showToast('Payment updated!');
+            } else {
+                await api.post('payments.php', body);
+                showToast('Payment added!');
+            }
+            closeModal('paymentModal');
+            loadPayments();
+        } catch (e) { showToast('Error: ' + e.message, 'error'); }
+        btn.disabled = false;
+        btn.innerHTML = 'Save Payment';
+    });
+
+    // Filters
+    document.getElementById('statusFilter').addEventListener('change', loadPayments);
+    document.getElementById('searchInput').addEventListener('input', debounce(loadPayments, 400));
+
+    init();
+    </script>
+</body>
+</html>

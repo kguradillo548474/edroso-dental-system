@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Log in — Edroso Dental</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-[#f5f0eb] font-sans text-[#2c3e50] antialiased flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-[480px] rounded-2xl bg-white p-8 shadow-lg border border-black/5">
+        <header class="text-center mb-8">
+            <p class="text-2xl font-bold text-[#22ccb2] tracking-tight">Edroso Dental</p>
+            <h1 class="mt-2 text-lg font-semibold text-[#2c3e50]">Welcome back</h1>
+        </header>
+
+        <p id="registeredBanner" class="hidden mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 border border-emerald-100" role="status">
+            Account created! Please log in.
+        </p>
+
+        <p id="formError" class="hidden mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-100" role="alert"></p>
+
+        <form id="loginForm" class="space-y-4" novalidate onsubmit="event.preventDefault();">
+            <div>
+                <label for="email" class="block text-sm font-medium text-[#2c3e50] mb-1">Email</label>
+                <input type="email" id="email" name="email" required autocomplete="email"
+                    class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/30">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-[#2c3e50] mb-1">Password</label>
+                <div class="relative">
+                    <input type="password" id="password" name="password" required autocomplete="current-password"
+                        class="w-full rounded-lg border border-gray-200 px-3 py-2 pr-10 text-sm focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/30">
+                    <button type="button" id="togglePw" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-[#22ccb2] hover:text-[#1bab96] px-1" aria-label="Show password">Show</button>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn"
+                class="mt-2 w-full rounded-xl bg-[#22ccb2] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1bab96] focus:outline-none focus:ring-2 focus:ring-[#22ccb2] focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                Log in
+            </button>
+        </form>
+
+        <p class="mt-4 text-center text-sm">
+            <a href="forgot-password.html" class="font-medium text-[#22ccb2] hover:text-[#1bab96]">Forgot password?</a>
+        </p>
+
+        <p class="mt-6 text-center text-sm text-gray-600">
+            Don’t have an account?
+            <a href="register.html" class="font-semibold text-[#22ccb2] hover:text-[#1bab96]">Register</a>
+        </p>
+    </div>
+
+    <script>
+        function apiPatientAuthUrl() {
+            var pathname = window.location.pathname || '';
+            var idx = pathname.indexOf('/customer-site');
+            if (idx !== -1) {
+                return window.location.origin + pathname.substring(0, idx) + '/api/patient_auth.php';
+            }
+            return new URL('../api/patient_auth.php', window.location.href).href;
+        }
+        const API = apiPatientAuthUrl();
+        let csrfToken = '';
+
+        async function loadCsrfToken() {
+            const res = await fetch(API + '?action=csrf', { credentials: 'same-origin' });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok || !data.csrf_token) {
+                throw new Error(data.error || 'Could not initialize security token.');
+            }
+            csrfToken = String(data.csrf_token);
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('formError');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+        function clearError() {
+            const el = document.getElementById('formError');
+            el.textContent = '';
+            el.classList.add('hidden');
+        }
+
+        document.getElementById('togglePw').addEventListener('click', function () {
+            const input = document.getElementById('password');
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            this.textContent = show ? 'Hide' : 'Show';
+            this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+
+        (function showRegisteredBannerIfNeeded() {
+            try {
+                if (sessionStorage.getItem('portal_registration_ok') === '1') {
+                    sessionStorage.removeItem('portal_registration_ok');
+                    document.getElementById('registeredBanner').classList.remove('hidden');
+                }
+            } catch (_) { /* private mode */ }
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('registered') === '1') {
+                document.getElementById('registeredBanner').classList.remove('hidden');
+                params.delete('registered');
+                var q = params.toString();
+                var clean = window.location.pathname + (q ? '?' + q : '') + window.location.hash;
+                window.history.replaceState({}, '', clean);
+            }
+        })();
+
+        function safeNextPath(raw) {
+            if (!raw || typeof raw !== 'string') return null;
+            if (raw.indexOf('://') !== -1 || raw.indexOf('//') === 0) return null;
+            if (!/^portal\/[a-zA-Z0-9._/-]+\.html$/.test(raw)) return null;
+            return raw;
+        }
+
+        (async function checkSession() {
+            try {
+                const res = await fetch(API + '?action=me', { credentials: 'same-origin' });
+                if (res.ok) {
+                    var next = safeNextPath(new URLSearchParams(window.location.search).get('next'));
+                    window.location.replace(next || 'portal/dashboard.html');
+                }
+            } catch (_) { /* stay on login */ }
+        })();
+        loadCsrfToken().catch(function (err) { showError(err.message); });
+
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clearError();
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-CSRF-Token': csrfToken },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ action: 'login', email: email, password: password, csrf_token: csrfToken })
+                });
+                const data = await res.json().catch(function () { return {}; });
+                if (res.ok && data.success) {
+                    var next = safeNextPath(new URLSearchParams(window.location.search).get('next'));
+                    window.location.href = next || 'portal/dashboard.html';
+                    return;
+                }
+                showError('Invalid email or password.');
+            } catch (err) {
+                showError('Invalid email or password.');
+            }
+            btn.disabled = false;
+        });
+    </script>
+</body>
+</html>

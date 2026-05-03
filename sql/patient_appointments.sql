@@ -1,0 +1,21 @@
+-- Run in phpMyAdmin (database: edroso_dental) before using patient booking
+CREATE TABLE IF NOT EXISTS patient_appointments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  portal_user_id INT NOT NULL,
+  dentist_id INT NULL DEFAULT NULL,
+  preferred_date DATE NOT NULL,
+  preferred_time TIME NOT NULL,
+  reason VARCHAR(100),
+  service_id INT DEFAULT NULL,
+  reason_label VARCHAR(150) DEFAULT NULL,
+  meeting_type ENUM('online','in_person') DEFAULT 'in_person' COMMENT 'Deprecated: app now always stores in_person',
+  patient_details JSON,
+  health_history JSON,
+  payment_method VARCHAR(50),
+  status ENUM('pending','scheduled','completed','cancelled') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_preferred_date (preferred_date),
+  INDEX idx_status (status),
+  INDEX idx_date_status (preferred_date, status),
+  FOREIGN KEY (portal_user_id) REFERENCES portal_users(id)
+);

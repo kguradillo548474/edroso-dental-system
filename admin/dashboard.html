@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'},fontFamily:{inter:['Inter','sans-serif']}}}}</script>
+</head>
+<body class="font-inter bg-neutral min-h-screen flex hidden" id="adminDashboardBody">
+    <div id="sidebarMount"></div>
+
+    <div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+        <div id="headerMount"></div>
+
+        <main class="pt-20 px-6 pb-8">
+            <!-- Welcome Banner -->
+            <div class="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-6 mb-6 text-white relative overflow-hidden">
+                <div class="relative z-10 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-1">Hello, <span id="welcomeName">Admin</span>!</h2>
+                        <p class="text-white/80 text-sm mb-4" id="currentDateTime">Loading...</p>
+                        <div class="flex items-end gap-3">
+                            <div>
+                                <p class="text-white/70 text-xs mb-1">Monthly Revenue</p>
+                                <p class="text-3xl font-bold" id="monthlyRevenue">₱0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="bg-white/20 rounded-xl px-4 py-2 text-sm font-medium" id="liveTime">--:--:-- --</div>
+                        <p class="text-white/60 text-xs mt-1">Live Time</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card cursor-pointer" onclick="location.href='patients.html'">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wide">Total Patients</p>
+                            <h3 class="text-2xl font-bold text-secondary" id="totalPatients">—</h3>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center">
+                            <i class="fas fa-user-injured text-primary"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400">Active registered patients</p>
+                    <div class="mt-2 h-1 bg-neutral-dark rounded-full"><div class="h-full bg-primary rounded-full" style="width:65%"></div></div>
+                </div>
+
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card cursor-pointer" onclick="location.href='appointments.html'">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wide">Today's Appointments</p>
+                            <h3 class="text-2xl font-bold text-secondary" id="todayAppts">—</h3>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-blue-500/15 flex items-center justify-center">
+                            <i class="fas fa-calendar-day text-blue-500"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400">Scheduled for today</p>
+                    <div class="mt-2 h-1 bg-neutral-dark rounded-full"><div class="h-full bg-blue-500 rounded-full" id="todayBar" style="width:0%"></div></div>
+                </div>
+
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card cursor-pointer" onclick="location.href='appointments.html'">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wide">Upcoming</p>
+                            <h3 class="text-2xl font-bold text-secondary" id="upcomingAppts">—</h3>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-accent"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400">Confirmed appointments ahead</p>
+                    <div class="mt-2 h-1 bg-neutral-dark rounded-full"><div class="h-full bg-accent rounded-full" style="width:50%"></div></div>
+                </div>
+
+                <div class="bg-white rounded-xl p-5 shadow-sm stat-card cursor-pointer" onclick="location.href='payments.html'">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1 uppercase tracking-wide">Pending Payments</p>
+                            <h3 class="text-2xl font-bold text-secondary" id="pendingPayments">—</h3>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-red-500/15 flex items-center justify-center">
+                            <i class="fas fa-file-invoice-dollar text-red-500"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400">Awaiting collection</p>
+                    <div class="mt-2 h-1 bg-neutral-dark rounded-full"><div class="h-full bg-red-400 rounded-full" style="width:35%"></div></div>
+                </div>
+            </div>
+
+            <!-- Appointment Progress -->
+            <div class="grid grid-cols-1 gap-5 mb-6">
+                <div class="bg-white rounded-xl p-6 shadow-sm">
+                    <h3 class="font-semibold text-secondary mb-5">Appointment Overview</h3>
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <button type="button" id="overviewBtnScheduled" data-overview-status="scheduled" class="overview-filter-btn rounded-xl p-4 text-center border-2 flex flex-col items-center justify-center transition-colors bg-primary text-white border-primary shadow-sm">
+                            <div class="ov-icon-wrap w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 bg-white/20">
+                                <i class="fas fa-calendar-check text-white"></i>
+                            </div>
+                            <p class="ov-count text-2xl font-bold" id="funnelScheduled">0</p>
+                            <p class="ov-label text-xs mt-1 opacity-90">Scheduled</p>
+                        </button>
+                        <button type="button" id="overviewBtnCompleted" data-overview-status="completed" class="overview-filter-btn rounded-xl p-4 text-center border-2 flex flex-col items-center justify-center transition-colors bg-white text-primary border-primary hover:bg-primary/5">
+                            <div class="ov-icon-wrap w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <i class="fas fa-check-circle text-green-600"></i>
+                            </div>
+                            <p class="ov-count text-2xl font-bold text-secondary" id="funnelCompleted">0</p>
+                            <p class="ov-label text-xs text-gray-500 mt-1">Completed</p>
+                        </button>
+                        <button type="button" id="overviewBtnCancelled" data-overview-status="cancelled" class="overview-filter-btn rounded-xl p-4 text-center border-2 flex flex-col items-center justify-center transition-colors bg-white text-primary border-primary hover:bg-primary/5">
+                            <div class="ov-icon-wrap w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <i class="fas fa-times-circle text-red-500"></i>
+                            </div>
+                            <p class="ov-count text-2xl font-bold text-secondary" id="funnelCancelled">0</p>
+                            <p class="ov-label text-xs text-gray-500 mt-1">Cancelled</p>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto mb-5">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="text-left text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-neutral-dark">
+                                    <th class="px-3 py-3">Patient Name</th>
+                                    <th class="px-3 py-3">Dentist</th>
+                                    <th class="px-3 py-3">Date</th>
+                                    <th class="px-3 py-3">Time</th>
+                                    <th class="px-3 py-3">Procedure</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overviewTableBody" class="divide-y divide-neutral-dark">
+                                <tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Funnel bar -->
+                    <div class="h-5 flex rounded-lg overflow-hidden" id="funnelBar">
+                        <div class="bg-blue-400 transition-all duration-700" id="fbar1" style="width:40%"></div>
+                        <div class="bg-green-500 transition-all duration-700" id="fbar2" style="width:40%"></div>
+                        <div class="bg-red-400 transition-all duration-700" id="fbar3" style="width:10%"></div>
+                        <div class="bg-gray-300 flex-1" id="fbar4"></div>
+                    </div>
+                    <div class="flex gap-4 mt-2 text-xs text-gray-500">
+                        <span><span class="inline-block w-2 h-2 bg-blue-400 rounded-full mr-1"></span>Scheduled</span>
+                        <span><span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>Completed</span>
+                        <span><span class="inline-block w-2 h-2 bg-red-400 rounded-full mr-1"></span>Cancelled</span>
+                        <span><span class="inline-block w-2 h-2 bg-gray-300 rounded-full mr-1"></span>Other</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Appointments -->
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <div class="flex justify-between items-center mb-5">
+                    <h3 class="font-semibold text-secondary">Recent Appointments</h3>
+                    <a href="appointments.html" class="text-sm text-primary hover:underline font-medium">View All</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="text-left text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-neutral-dark">
+                                <th class="px-3 py-3">Patient</th>
+                                <th class="px-3 py-3">Date & Time</th>
+                                <th class="px-3 py-3">Treatment</th>
+                                <th class="px-3 py-3">Dentist</th>
+                                <th class="px-3 py-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentTable" class="divide-y divide-neutral-dark">
+                            <tr><td colspan="5" class="px-3 py-6 text-center">
+                                <div class="skeleton h-5 w-3/4 mx-auto mb-2"></div>
+                                <div class="skeleton h-5 w-1/2 mx-auto"></div>
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/layout.js"></script>
+    <script src="../assets/js/app.js"></script>
+    <script>
+    // Inject layout
+    document.getElementById('sidebarMount').innerHTML = getSidebarHTML('dashboard');
+    document.getElementById('headerMount').innerHTML = getHeaderHTML('Dashboard');
+
+    const overviewBtnMeta = {
+        overviewBtnScheduled: {
+            iconClass: 'fas fa-calendar-check',
+            wrapInactive: 'bg-blue-100',
+            iconInactive: 'text-blue-600',
+        },
+        overviewBtnCompleted: {
+            iconClass: 'fas fa-check-circle',
+            wrapInactive: 'bg-green-100',
+            iconInactive: 'text-green-600',
+        },
+        overviewBtnCancelled: {
+            iconClass: 'fas fa-times-circle',
+            wrapInactive: 'bg-red-100',
+            iconInactive: 'text-red-500',
+        },
+    };
+
+    function setOverviewActive(status) {
+        const order = [
+            { id: 'overviewBtnScheduled', key: 'scheduled' },
+            { id: 'overviewBtnCompleted', key: 'completed' },
+            { id: 'overviewBtnCancelled', key: 'cancelled' },
+        ];
+        order.forEach(({ id, key }) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const meta = overviewBtnMeta[id];
+            const active = key === status;
+            const wrap = btn.querySelector('.ov-icon-wrap');
+            const icon = wrap && wrap.querySelector('i');
+            const count = btn.querySelector('.ov-count');
+            const lbl = btn.querySelector('.ov-label');
+            if (active) {
+                btn.className = 'overview-filter-btn rounded-xl p-4 text-center border-2 flex flex-col items-center justify-center transition-colors bg-primary text-white border-primary shadow-sm';
+                if (wrap) wrap.className = 'ov-icon-wrap w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 bg-white/20';
+                if (icon) icon.className = meta.iconClass + ' text-white';
+                if (count) count.className = 'ov-count text-2xl font-bold text-white';
+                if (lbl) lbl.className = 'ov-label text-xs mt-1 text-white/90';
+            } else {
+                btn.className = 'overview-filter-btn rounded-xl p-4 text-center border-2 flex flex-col items-center justify-center transition-colors bg-white border-primary text-primary hover:bg-primary/5';
+                if (wrap) wrap.className = 'ov-icon-wrap w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ' + meta.wrapInactive;
+                if (icon) icon.className = meta.iconClass + ' ' + meta.iconInactive;
+                if (count) count.className = 'ov-count text-2xl font-bold text-secondary';
+                if (lbl) lbl.className = 'ov-label text-xs text-gray-500 mt-1';
+            }
+        });
+    }
+
+    async function loadOverviewAppointments(status) {
+        const tbody = document.getElementById('overviewTableBody');
+        if (!tbody) return;
+        setOverviewActive(status);
+        tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">Loading…</td></tr>';
+        const emptyMsg = {
+            scheduled: 'No scheduled appointments.',
+            completed: 'No completed appointments.',
+            cancelled: 'No cancelled appointments.',
+        };
+        try {
+            const rows = await api.get('appointments.php', { status });
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-8 text-center text-gray-400">' + emptyMsg[status] + '</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map(a => `
+                <tr class="hover:bg-neutral/50 transition-colors">
+                    <td class="px-3 py-3 text-sm font-medium text-secondary">${a.patient_name || '—'}</td>
+                    <td class="px-3 py-3 text-sm text-secondary">${a.dentist_name || '—'}</td>
+                    <td class="px-3 py-3 text-sm text-secondary">${formatDate(a.appointment_date)}</td>
+                    <td class="px-3 py-3 text-sm text-secondary">${formatTime(a.appointment_time)}</td>
+                    <td class="px-3 py-3 text-sm text-secondary">${a.procedure_name || '—'}</td>
+                </tr>`).join('');
+        } catch (err) {
+            showToast('Failed to load appointments: ' + err.message, 'error');
+            tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-8 text-center text-red-500">Could not load appointments.</td></tr>';
+        }
+    }
+
+    function initOverviewFilters() {
+        [['overviewBtnScheduled', 'scheduled'], ['overviewBtnCompleted', 'completed'], ['overviewBtnCancelled', 'cancelled']].forEach(([bid, st]) => {
+            const b = document.getElementById(bid);
+            if (b) b.addEventListener('click', () => loadOverviewAppointments(st));
+        });
+    }
+
+    async function loadDashboard() {
+        const user = await checkAuth();
+        if (!user) return;
+        document.getElementById('adminDashboardBody').classList.remove('hidden');
+        document.getElementById('welcomeName').textContent = user.full_name || user.username;
+
+        // Live clock
+        function tick() {
+            const now = new Date();
+            document.getElementById('liveTime').textContent = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        tick();
+        setInterval(tick, 1000);
+
+        try {
+            const stats = await api.get('dashboard.php');
+
+            // Stat cards
+            document.getElementById('totalPatients').textContent = stats.total_patients.toLocaleString();
+            document.getElementById('todayAppts').textContent = stats.today_appointments.toLocaleString();
+            document.getElementById('upcomingAppts').textContent = stats.upcoming_appointments.toLocaleString();
+            document.getElementById('pendingPayments').textContent = stats.pending_payments.toLocaleString();
+            document.getElementById('monthlyRevenue').textContent = formatMoney(stats.monthly_revenue);
+
+            // Funnel
+            const f = stats.appointment_funnel || {};
+            const total = Object.values(f).reduce((a,b) => a+b, 0) || 1;
+            const sched = (f['Scheduled'] || 0) + (f['Confirmed'] || 0);
+            const comp = f['Completed'] || 0;
+            const canc = f['Cancelled'] || 0;
+            document.getElementById('funnelScheduled').textContent = sched;
+            document.getElementById('funnelCompleted').textContent = comp;
+            document.getElementById('funnelCancelled').textContent = canc;
+            document.getElementById('fbar1').style.width = `${sched/total*100}%`;
+            document.getElementById('fbar2').style.width = `${comp/total*100}%`;
+            document.getElementById('fbar3').style.width = `${canc/total*100}%`;
+
+            // Recent appointments
+            const recent = stats.recent_appointments || [];
+            document.getElementById('recentTable').innerHTML = recent.length === 0
+                ? '<tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">No recent appointments.</td></tr>'
+                : recent.map(a => `
+                    <tr class="hover:bg-neutral/50 transition-colors">
+                        <td class="px-3 py-3">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
+                                    ${getInitials(a.patient_name)}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-secondary">${a.patient_name}</p>
+                                    <p class="text-xs text-gray-400">${a.patient_number}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-3 py-3">
+                            <p class="text-sm text-secondary">${formatDate(a.appointment_date)}</p>
+                            <p class="text-xs text-gray-400">${formatTime(a.appointment_time)}</p>
+                        </td>
+                        <td class="px-3 py-3 text-sm text-secondary">${a.procedure_name}</td>
+                        <td class="px-3 py-3 text-sm text-secondary">${a.dentist_name}</td>
+                        <td class="px-3 py-3">
+                            <span class="px-2 py-1 text-xs rounded-full font-medium ${getStatusClass(a.status)}">${a.status}</span>
+                        </td>
+                    </tr>`).join('');
+
+        } catch (err) {
+            showToast('Failed to load dashboard: ' + err.message, 'error');
+        }
+        await loadOverviewAppointments('scheduled');
+    }
+
+    initOverviewFilters();
+    loadDashboard();
+    </script>
+</body>
+</html>

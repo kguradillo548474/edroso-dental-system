@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore Edroso Dental Clinic services including general dentistry, orthodontics, cosmetic treatments, pediatric care, emergency visits, and whitening.">
+    <meta property="og:title" content="Our Services | Edroso Dental Clinic">
+    <meta property="og:description" content="Browse complete dental services at Edroso Dental Clinic with tailored treatments for children, adults, and urgent dental needs.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%A6%B7%3C/text%3E%3C/svg%3E">
+    <title>Our Services — Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col bg-white text-gray-900">
+    <div id="nav"></div>
+    <main class="flex-1 w-full">
+        <section class="border-b border-gray-100 bg-gradient-to-b from-[var(--surface)] to-white px-4 py-10 sm:py-12 lg:py-14">
+            <div class="mx-auto max-w-6xl text-center">
+                <h1 class="text-3xl font-bold tracking-tight text-[var(--secondary)] sm:text-4xl">
+                    Our Services
+                </h1>
+                <p class="mx-auto mt-3 max-w-2xl text-sm text-gray-600 sm:text-base">
+                    Comprehensive dental care for every stage of life—delivered with skill and a gentle touch.
+                </p>
+            </div>
+        </section>
+
+        <section class="px-4 py-12 sm:py-14 lg:py-16">
+            <div class="mx-auto max-w-6xl">
+                <p id="servicesCatalogHint" class="mb-6 text-center text-sm text-gray-500">Loading current services and prices…</p>
+                <div id="servicesCatalogGrid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8"></div>
+            </div>
+        </section>
+        <script>
+        (function () {
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            }
+            var grid = document.getElementById('servicesCatalogGrid');
+            var hint = document.getElementById('servicesCatalogHint');
+            fetch('../api/services.php?scope=catalog', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var list = (data && data.services) ? data.services : [];
+                    if (data && data.error) throw new Error(data.error);
+                    hint.classList.add('hidden');
+                    if (!list.length) {
+                        grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-10">No services are listed right now. Please call the clinic.</p>';
+                        return;
+                    }
+                    grid.innerHTML = list.map(function (s) {
+                        var price = s.price != null ? '\u20B1' + parseFloat(s.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+                        return '<article class="flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">' +
+                            '<div class="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-[var(--primary)]" aria-hidden="true">' +
+                            '<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>' +
+                            '<h2 class="mt-4 text-lg font-semibold text-[var(--secondary)]">' + esc(s.name) + '</h2>' +
+                            '<p class="mt-2 text-sm font-medium text-[var(--primary)]">' + price + '</p>' +
+                            '<p class="mt-3 flex-1 text-sm leading-relaxed text-gray-600">Book this service through our online portal or ask our front desk for availability.</p>' +
+                            '<div class="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-4">' +
+                            '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">Cash</span>' +
+                            '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">Card</span>' +
+                            '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">GCash</span>' +
+                            '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">Insurance</span>' +
+                            '</div></article>';
+                    }).join('');
+                })
+                .catch(function () {
+                    hint.textContent = 'Could not load services. Please try again later.';
+                });
+        })();
+        </script>
+    </main>
+    <div id="footer"></div>
+    <script src="assets/js/main.js?v=20260503"></script>
+    <script src="assets/js/booking-cta.js?v=20260428"></script>
+</body>
+</html>

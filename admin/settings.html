@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'},fontFamily:{inter:['Inter','sans-serif']}}}}</script>
+</head>
+<body class="font-inter bg-neutral min-h-screen flex">
+    <div id="sidebarMount"></div>
+    <div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+        <div id="headerMount"></div>
+        <main class="pt-20 px-6 pb-12 max-w-5xl">
+            <p class="text-sm text-gray-500 mb-6">Configure clinic profile, services, appointments, records, billing, and security. Changes are stored in the database.</p>
+
+            <!-- Section 1: Clinic Profile -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-hospital text-primary"></i> Clinic profile</h2>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Clinic name</label>
+                        <input type="text" id="clinic_name" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dentist name</label>
+                        <input type="text" id="dentist_name" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">PRC license number</label>
+                        <input type="text" id="prc_license" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Contact number</label>
+                        <input type="text" id="clinic_contact" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Clinic address</label>
+                        <textarea id="clinic_address" rows="2" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50" placeholder="Street, barangay, city"></textarea>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Clinic hours</label>
+                        <textarea id="clinic_hours" rows="2" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:ring-2 focus:ring-primary/50"></textarea>
+                    </div>
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <button type="button" id="saveClinicProfile" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save clinic profile</button>
+                </div>
+            </section>
+
+            <!-- Section 2: Services -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-tooth text-primary"></i> Treatment &amp; service list</h2>
+                <p class="text-xs text-gray-500 mb-3">Edit name and price inline. Inactive services stay hidden from new selections where applicable.</p>
+                <div class="overflow-x-auto mb-4">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs text-gray-400 uppercase border-b border-neutral-dark">
+                                <th class="py-2 pr-3">Service</th>
+                                <th class="py-2 pr-3 w-36">Price (₱)</th>
+                                <th class="py-2 pr-3">Active</th>
+                                <th class="py-2 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicesTableBody"></tbody>
+                    </table>
+                </div>
+                <button type="button" id="addServiceBtn" class="px-4 py-2 bg-secondary text-white rounded-lg text-sm font-medium hover:opacity-95"><i class="fas fa-plus mr-1"></i> Add service</button>
+            </section>
+
+            <!-- Section 3: Appointments -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-calendar-alt text-primary"></i> Appointment &amp; queue</h2>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Time per patient (minutes)</label>
+                        <input type="number" id="time_per_patient" min="5" max="240" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Walk-in limit (per day)</label>
+                        <input type="number" id="walkin_limit" min="0" max="999" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm">
+                    </div>
+                    <div class="flex items-end pb-2">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="appointment_system_enabled" class="rounded border-neutral-dark text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-secondary">Appointment system enabled</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <button type="button" id="saveAppointmentSettings" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save appointment settings</button>
+                </div>
+            </section>
+
+            <!-- Section 4: Patient records -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-file-medical text-primary"></i> Patient record preferences</h2>
+                <p class="text-sm text-gray-600 mb-2">Required fields (patient form)</p>
+                <div class="flex flex-wrap gap-4 mb-4" id="requiredFieldsGroup">
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="name" class="rf-cb rounded border-neutral-dark"> Name</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="age" class="rf-cb rounded border-neutral-dark"> Age</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="contact" class="rf-cb rounded border-neutral-dark"> Contact</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="email" class="rf-cb rounded border-neutral-dark"> Email</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="medical_history" class="rf-cb rounded border-neutral-dark"> Medical history</label>
+                </div>
+                <div class="max-w-xs">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes format</label>
+                    <select id="notes_format" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm">
+                        <option value="free_text">Free text</option>
+                        <option value="structured">Structured</option>
+                    </select>
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <button type="button" id="savePatientPrefs" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save patient preferences</button>
+                </div>
+            </section>
+
+            <!-- Section 5: Billing -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-money-bill-wave text-primary"></i> Billing &amp; payment</h2>
+                <p class="text-sm text-gray-600 mb-2">Accepted payment types</p>
+                <div class="flex flex-wrap gap-4 mb-4" id="paymentTypesGroup">
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="Cash" class="pt-cb rounded border-neutral-dark"> Cash</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="GCash" class="pt-cb rounded border-neutral-dark"> GCash</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="Bank Transfer" class="pt-cb rounded border-neutral-dark"> Bank transfer</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="PhilHealth" class="pt-cb rounded border-neutral-dark"> PhilHealth</label>
+                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" value="HMO" class="pt-cb rounded border-neutral-dark"> HMO</label>
+                </div>
+                <div class="flex flex-wrap items-end gap-6 mb-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="down_payment_enabled" class="rounded border-neutral-dark text-primary focus:ring-primary">
+                        <span class="text-sm font-medium text-secondary">Require down payment</span>
+                    </label>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Down payment (%)</label>
+                        <input type="number" id="down_payment_percent" min="0" max="100" step="1" class="w-24 px-3 py-2 border border-neutral-dark rounded-lg text-sm">
+                    </div>
+                </div>
+                <div class="max-w-xs">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Receipt format</label>
+                    <select id="receipt_format" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm">
+                        <option value="simple">Simple</option>
+                        <option value="detailed">Detailed</option>
+                    </select>
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <button type="button" id="saveBillingPrefs" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save billing settings</button>
+                </div>
+            </section>
+
+            <!-- Section 5b: Portal referral sources (booking form) -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-2 flex items-center gap-2"><i class="fas fa-bullhorn text-primary"></i> Patient portal — referral sources</h2>
+                <p class="text-xs text-gray-500 mb-4">Options shown on &quot;How did you hear about us?&quot; when patients book online. Stored as <code class="text-xs bg-neutral px-1 rounded">portal_referral_sources</code> in settings.</p>
+                <ul id="referralSourcesList" class="space-y-2 max-w-xl mb-4"></ul>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="addReferralSourceRow" class="px-4 py-2 border border-neutral-dark rounded-lg text-sm font-medium text-secondary hover:bg-neutral-dark/40">Add row</button>
+                    <button type="button" id="saveReferralSources" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save referral sources</button>
+                </div>
+            </section>
+
+            <!-- Section 6: Backup & security -->
+            <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
+                <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-shield-alt text-primary"></i> Backup &amp; security</h2>
+                <div class="space-y-6">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-2">Download a full SQL backup of the database.</p>
+                        <button type="button" id="backupBtn" class="px-4 py-2 bg-secondary text-white rounded-lg text-sm font-medium hover:opacity-95"><i class="fas fa-download mr-2"></i>Download backup</button>
+                    </div>
+                    <div class="border-t border-neutral-dark pt-6">
+                        <p class="text-sm font-medium text-secondary mb-3">Change admin password</p>
+                        <div class="grid md:grid-cols-3 gap-4 max-w-3xl">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Current password</label>
+                                <input type="password" id="pw_old" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm" autocomplete="current-password">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">New password</label>
+                                <input type="password" id="pw_new" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm" autocomplete="new-password" minlength="8">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Confirm new</label>
+                                <input type="password" id="pw_confirm" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm" autocomplete="new-password" minlength="8">
+                            </div>
+                        </div>
+                        <button type="button" id="changePasswordBtn" class="mt-3 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Update password</button>
+                    </div>
+                    <div class="border-t border-neutral-dark pt-6 max-w-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Auto-logout after inactivity</label>
+                        <select id="auto_logout_minutes" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm">
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">60 minutes</option>
+                            <option value="0">Never</option>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">Applies after you reload any page following save.</p>
+                        <button type="button" id="saveAutoLogout" class="mt-3 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium">Save auto-logout</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../assets/js/layout.js"></script>
+    <script src="../assets/js/app.js"></script>
+    <script>
+    document.getElementById('sidebarMount').innerHTML = getSidebarHTML('settings');
+    document.getElementById('headerMount').innerHTML = getHeaderHTML('Settings');
+
+    let settingsMap = {};
+
+    function parseJsonSafe(s, fallback) {
+        try { return JSON.parse(s); } catch (_) { return fallback; }
+    }
+
+    function defaultPatientPrefs() {
+        return { required_fields: ['name', 'contact'], notes_format: 'free_text' };
+    }
+
+    function defaultBillingPrefs() {
+        return {
+            payment_types: ['Cash', 'GCash', 'Bank Transfer', 'PhilHealth', 'HMO'],
+            down_payment_enabled: false,
+            down_payment_percent: 0,
+            receipt_format: 'simple'
+        };
+    }
+
+    function defaultReferralSources() {
+        return ['Facebook', 'Instagram', 'TikTok', 'Referral', 'Walk-in', 'Other'];
+    }
+
+    function escAttr(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    function referralSourcesFromSettings() {
+        const raw = settingsMap.portal_referral_sources;
+        if (!raw) {
+            return defaultReferralSources();
+        }
+        const a = parseJsonSafe(raw, null);
+        if (Array.isArray(a) && a.length) {
+            return a.map((x) => String(x).trim()).filter(Boolean);
+        }
+        return defaultReferralSources();
+    }
+
+    function renderReferralSourcesEditor() {
+        const arr = referralSourcesFromSettings();
+        const ul = document.getElementById('referralSourcesList');
+        if (!ul) {
+            return;
+        }
+        ul.innerHTML = arr.map((label) => `
+            <li class="flex gap-2 items-center">
+                <input type="text" class="ref-src-input flex-1 px-3 py-2 border border-neutral-dark rounded-lg text-sm" value="${escAttr(label)}" placeholder="e.g. Facebook">
+                <button type="button" class="ref-src-remove px-3 py-2 border border-neutral-dark rounded-lg text-sm text-red-600 hover:bg-red-50 shrink-0">Remove</button>
+            </li>`).join('');
+    }
+
+    function applySettingsToForm(s) {
+        settingsMap = { ...s };
+        document.getElementById('clinic_name').value = s.clinic_name || '';
+        document.getElementById('dentist_name').value = s.dentist_name || '';
+        document.getElementById('prc_license').value = s.prc_license || '';
+        document.getElementById('clinic_contact').value = s.clinic_contact || '';
+        document.getElementById('clinic_address').value = s.clinic_address || '';
+        document.getElementById('clinic_hours').value = s.clinic_hours || '';
+
+        document.getElementById('time_per_patient').value = s.time_per_patient || '30';
+        document.getElementById('walkin_limit').value = s.walkin_limit || '10';
+        document.getElementById('appointment_system_enabled').checked = (s.appointment_system_enabled === '1' || s.appointment_system_enabled === 'true');
+
+        const pp = parseJsonSafe(s.patient_record_preferences || '', null) || defaultPatientPrefs();
+        document.querySelectorAll('.rf-cb').forEach(cb => { cb.checked = (pp.required_fields || []).includes(cb.value); });
+        document.getElementById('notes_format').value = pp.notes_format === 'structured' ? 'structured' : 'free_text';
+
+        const bp = parseJsonSafe(s.billing_preferences || '', null) || defaultBillingPrefs();
+        document.querySelectorAll('.pt-cb').forEach(cb => { cb.checked = (bp.payment_types || []).includes(cb.value); });
+        document.getElementById('down_payment_enabled').checked = !!bp.down_payment_enabled;
+        document.getElementById('down_payment_percent').value = bp.down_payment_percent != null ? bp.down_payment_percent : 0;
+        document.getElementById('receipt_format').value = bp.receipt_format === 'detailed' ? 'detailed' : 'simple';
+
+        const al = s.auto_logout_minutes != null ? String(s.auto_logout_minutes) : '30';
+        const sel = document.getElementById('auto_logout_minutes');
+        if (['15', '30', '60', '0'].includes(al)) sel.value = al;
+        else sel.value = '30';
+
+        renderReferralSourcesEditor();
+    }
+
+    async function loadAll() {
+        const data = await api.get('settings.php');
+        applySettingsToForm(data.settings || {});
+        await renderServices();
+    }
+
+    async function renderServices() {
+        const data = await api.get('services.php');
+        const list = data.services || [];
+        const tb = document.getElementById('servicesTableBody');
+        if (!list.length) {
+            tb.innerHTML = '<tr><td colspan="4" class="py-6 text-gray-400">No services.</td></tr>';
+            return;
+        }
+        const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+        tb.innerHTML = list.map(sv => `
+            <tr class="border-b border-neutral-dark/40" data-sid="${sv.id}">
+                <td class="py-2 pr-2"><input type="text" class="svc-name w-full px-2 py-1.5 border border-neutral-dark rounded text-sm" value="${esc(sv.name)}"></td>
+                <td class="py-2 pr-2"><input type="number" step="0.01" min="0" class="svc-price w-full px-2 py-1.5 border border-neutral-dark rounded text-sm" value="${sv.price}"></td>
+                <td class="py-2 pr-2">
+                    <button type="button" class="toggle-active px-2 py-1 rounded text-xs font-medium ${sv.active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}" data-active="${sv.active ? 1 : 0}">${sv.active ? 'Active' : 'Inactive'}</button>
+                </td>
+                <td class="py-2 text-right">
+                    <button type="button" class="save-row px-2 py-1 text-primary text-xs font-medium">Save</button>
+                    <button type="button" class="del-row px-2 py-1 text-red-500 text-xs font-medium">Delete</button>
+                </td>
+            </tr>`).join('');
+    }
+
+    document.getElementById('servicesTableBody').addEventListener('click', async (e) => {
+        const tr = e.target.closest('tr[data-sid]');
+        if (!tr) return;
+        const id = tr.getAttribute('data-sid');
+        if (e.target.classList.contains('toggle-active')) {
+            const cur = e.target.getAttribute('data-active') === '1';
+            try {
+                await api.put('services.php?id=' + id, { active: cur ? 0 : 1 });
+                showToast('Status updated');
+                renderServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+        if (e.target.classList.contains('save-row')) {
+            const name = tr.querySelector('.svc-name').value.trim();
+            const price = parseFloat(tr.querySelector('.svc-price').value);
+            if (!name) { showToast('Name required', 'error'); return; }
+            try {
+                await api.put('services.php?id=' + id, { name, price: isNaN(price) ? 0 : price });
+                showToast('Service saved');
+                renderServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+        if (e.target.classList.contains('del-row')) {
+            if (!confirm('Delete this service?')) return;
+            try {
+                await api.delete('services.php?id=' + id);
+                showToast('Deleted');
+                renderServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+    });
+
+    document.getElementById('addServiceBtn').addEventListener('click', async () => {
+        const name = prompt('Service name');
+        if (!name || !name.trim()) return;
+        const price = parseFloat(prompt('Price (₱)', '0') || '0');
+        try {
+            await api.post('services.php', { name: name.trim(), price: isNaN(price) ? 0 : price });
+            showToast('Service added');
+            renderServices();
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('saveClinicProfile').addEventListener('click', async () => {
+        const payload = {
+            clinic_name: document.getElementById('clinic_name').value.trim(),
+            dentist_name: document.getElementById('dentist_name').value.trim(),
+            prc_license: document.getElementById('prc_license').value.trim(),
+            clinic_contact: document.getElementById('clinic_contact').value.trim(),
+            clinic_address: document.getElementById('clinic_address').value.trim(),
+            clinic_hours: document.getElementById('clinic_hours').value.trim()
+        };
+        try {
+            await api.post('settings.php', { settings: payload });
+            showToast('Clinic profile saved');
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('saveAppointmentSettings').addEventListener('click', async () => {
+        const payload = {
+            time_per_patient: String(Math.max(5, parseInt(document.getElementById('time_per_patient').value, 10) || 30)),
+            walkin_limit: String(Math.max(0, parseInt(document.getElementById('walkin_limit').value, 10) || 0)),
+            appointment_system_enabled: document.getElementById('appointment_system_enabled').checked ? '1' : '0'
+        };
+        try {
+            await api.post('settings.php', { settings: payload });
+            showToast('Appointment settings saved');
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('savePatientPrefs').addEventListener('click', async () => {
+        const required_fields = Array.from(document.querySelectorAll('.rf-cb:checked')).map(c => c.value);
+        const notes_format = document.getElementById('notes_format').value;
+        const json = JSON.stringify({ required_fields, notes_format });
+        try {
+            await api.post('settings.php', { key: 'patient_record_preferences', value: json });
+            showToast('Patient preferences saved');
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('saveBillingPrefs').addEventListener('click', async () => {
+        const payment_types = Array.from(document.querySelectorAll('.pt-cb:checked')).map(c => c.value);
+        const obj = {
+            payment_types,
+            down_payment_enabled: document.getElementById('down_payment_enabled').checked,
+            down_payment_percent: Math.min(100, Math.max(0, parseInt(document.getElementById('down_payment_percent').value, 10) || 0)),
+            receipt_format: document.getElementById('receipt_format').value
+        };
+        try {
+            await api.post('settings.php', { key: 'billing_preferences', value: JSON.stringify(obj) });
+            showToast('Billing settings saved');
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('referralSourcesList').addEventListener('click', (e) => {
+        if (e.target.classList.contains('ref-src-remove')) {
+            const li = e.target.closest('li');
+            if (li) li.remove();
+        }
+    });
+
+    document.getElementById('addReferralSourceRow').addEventListener('click', () => {
+        const ul = document.getElementById('referralSourcesList');
+        const li = document.createElement('li');
+        li.className = 'flex gap-2 items-center';
+        li.innerHTML = `
+            <input type="text" class="ref-src-input flex-1 px-3 py-2 border border-neutral-dark rounded-lg text-sm" value="" placeholder="e.g. Google">
+            <button type="button" class="ref-src-remove px-3 py-2 border border-neutral-dark rounded-lg text-sm text-red-600 hover:bg-red-50 shrink-0">Remove</button>`;
+        ul.appendChild(li);
+    });
+
+    document.getElementById('saveReferralSources').addEventListener('click', async () => {
+        const inputs = document.querySelectorAll('#referralSourcesList .ref-src-input');
+        const list = Array.from(inputs).map((i) => i.value.trim()).filter(Boolean);
+        if (!list.length) {
+            showToast('Add at least one referral source.', 'error');
+            return;
+        }
+        const json = JSON.stringify(list);
+        try {
+            await api.post('settings.php', { key: 'portal_referral_sources', value: json });
+            settingsMap.portal_referral_sources = json;
+            showToast('Referral sources saved');
+            renderReferralSourcesEditor();
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('backupBtn').addEventListener('click', () => {
+        window.location.href = 'api/backup.php';
+    });
+
+    document.getElementById('changePasswordBtn').addEventListener('click', async () => {
+        const body = {
+            old_password: document.getElementById('pw_old').value,
+            new_password: document.getElementById('pw_new').value,
+            confirm_password: document.getElementById('pw_confirm').value
+        };
+        try {
+            await api.post('auth.php?action=change_password', body);
+            showToast('Password updated. Please sign in again.');
+            document.getElementById('pw_old').value = '';
+            document.getElementById('pw_new').value = '';
+            document.getElementById('pw_confirm').value = '';
+            setTimeout(() => { window.location.href = 'login.html'; }, 1200);
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    document.getElementById('saveAutoLogout').addEventListener('click', async () => {
+        const v = document.getElementById('auto_logout_minutes').value;
+        try {
+            await api.post('settings.php', { key: 'auto_logout_minutes', value: v });
+            showToast('Saved. Reload another page for timer to apply.');
+        } catch (err) { showToast(err.message, 'error'); }
+    });
+
+    async function init() {
+        await checkAuth();
+        try { await loadAll(); }
+        catch (e) { showToast('Could not load settings: ' + e.message, 'error'); }
+    }
+    init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patients - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'}}}}</script>
+</head>
+<body class="font-sans bg-neutral min-h-screen flex" style="font-family:'Inter',sans-serif">
+<div id="sidebarMount"></div>
+<div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+    <div id="headerMount"></div>
+    <main class="pt-20 px-6 pb-8">
+
+        <!-- Action Bar -->
+        <div class="flex flex-wrap justify-between items-center mb-5 gap-3">
+            <div class="flex items-center gap-3">
+                <button id="addPatientBtn" class="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl flex items-center gap-2 text-sm font-medium transition-colors shadow-sm">
+                    <i class="fas fa-user-plus"></i> Add Patient
+                </button>
+                <select id="statusFilter" class="pl-4 pr-8 py-2.5 rounded-xl border border-neutral-dark bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none cursor-pointer">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="Search by name, ID, phone…"
+                    class="pl-10 pr-4 py-2.5 rounded-xl bg-white border border-neutral-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-72">
+                <i class="fas fa-search text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 text-xs"></i>
+            </div>
+        </div>
+
+        <!-- Stat Strip -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center stat-card">
+                <p class="text-2xl font-bold text-primary" id="statTotal">—</p>
+                <p class="text-xs text-gray-400 mt-1">Total Patients</p>
+            </div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center stat-card">
+                <p class="text-2xl font-bold text-green-500" id="statActive">—</p>
+                <p class="text-xs text-gray-400 mt-1">Active</p>
+            </div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center stat-card">
+                <p class="text-2xl font-bold text-blue-500" id="statMale">—</p>
+                <p class="text-xs text-gray-400 mt-1">Male</p>
+            </div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center stat-card">
+                <p class="text-2xl font-bold text-accent" id="statFemale">—</p>
+                <p class="text-xs text-gray-400 mt-1">Female</p>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b border-neutral-dark text-left text-xs font-semibold text-gray-400 uppercase tracking-wider bg-neutral/60">
+                            <th class="px-5 py-3.5">Patient</th>
+                            <th class="px-5 py-3.5">ID Number</th>
+                            <th class="px-5 py-3.5">Contact</th>
+                            <th class="px-5 py-3.5">Gender / Age</th>
+                            <th class="px-5 py-3.5">Visits</th>
+                            <th class="px-5 py-3.5">Last Visit</th>
+                            <th class="px-5 py-3.5">Status</th>
+                            <th class="px-5 py-3.5 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientsTable" class="divide-y divide-neutral-dark">
+                        <tr><td colspan="8" class="px-5 py-10 text-center text-gray-400">
+                            <i class="fas fa-spinner fa-spin text-primary text-xl mb-2 block"></i>Loading patients…
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-5 py-3 border-t border-neutral-dark flex justify-between items-center bg-neutral/30">
+                <p class="text-sm text-gray-400" id="tableInfo">—</p>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="px-3 py-1.5 text-sm bg-white border border-neutral-dark text-secondary rounded-lg hover:bg-neutral-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <i class="fas fa-chevron-left mr-1 text-xs"></i> Prev
+                    </button>
+                    <button id="nextPage" class="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        Next <i class="fas fa-chevron-right ml-1 text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- View patient + appointment history -->
+<div id="patientViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-3xl mx-4 modal-box max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-secondary text-xl" id="patientViewTitle">Patient</h3>
+            <button type="button" onclick="closeModal('patientViewModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-dark text-gray-400 hover:text-secondary transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="patientViewSummary" class="text-sm text-secondary mb-6"></div>
+        <div class="border-t border-neutral-dark pt-4">
+            <h4 class="text-sm font-semibold text-secondary mb-2 uppercase tracking-wide text-gray-500">Appointment history</h4>
+            <div id="patientViewHistory" class="text-sm text-gray-600 min-h-[4rem]">Loading…</div>
+        </div>
+        <div class="flex justify-end mt-5 pt-4 border-t border-neutral-dark">
+            <button type="button" onclick="closeModal('patientViewModal')" class="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="patientModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-2xl mx-4 modal-box max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="font-bold text-secondary text-xl" id="modalTitle">Add Patient</h3>
+            <button onclick="closeModal('patientModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-dark text-gray-400 hover:text-secondary transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="patientForm">
+            <input type="hidden" id="patientId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">First Name <span class="text-red-400">*</span></label>
+                    <input type="text" id="fFirst" placeholder="Juan" autocomplete="given-name"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition">
+                    <p id="errFirst" class="text-xs text-red-500 mt-1 hidden" role="alert"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Last Name <span class="text-red-400">*</span></label>
+                    <input type="text" id="fLast" placeholder="dela Cruz" autocomplete="family-name"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition">
+                    <p id="errLast" class="text-xs text-red-500 mt-1 hidden" role="alert"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Email</label>
+                    <input type="text" id="fEmail" inputmode="email" autocomplete="email" placeholder="juan@email.com"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition">
+                    <p id="errEmail" class="text-xs text-red-500 mt-1 hidden" role="alert"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Contact Number <span class="text-red-400">*</span></label>
+                    <input type="text" id="fPhone" placeholder="+63 9XX XXX XXXX" inputmode="tel" autocomplete="tel"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition">
+                    <p id="errPhone" class="text-xs text-red-500 mt-1 hidden" role="alert"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Date of Birth <span class="text-red-400">*</span></label>
+                    <input type="date" id="fDob" autocomplete="bday"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition">
+                    <p id="errDob" class="text-xs text-red-500 mt-1 hidden" role="alert"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Gender <span class="text-red-400">*</span></label>
+                    <select id="fGender" required class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none transition">
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other / Prefer not to say</option>
+                    </select>
+                    <p id="errGender" class="text-xs text-red-500 mt-1 hidden" role="alert"></p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Address</label>
+                    <input type="text" id="fAddress" placeholder="Street, Barangay, City"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Medical Notes / Allergies</label>
+                    <textarea id="fNotes" rows="3" placeholder="Any known allergies, medical conditions, etc."
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none transition"></textarea>
+                </div>
+                <div id="statusField" class="hidden">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
+                    <select id="fStatus" class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2 border-t border-neutral-dark">
+                <button type="button" onclick="closeModal('patientModal')"
+                    class="px-5 py-2.5 bg-neutral-dark text-secondary rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                <button type="submit" id="savePatientBtn"
+                    class="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
+                    <i class="fas fa-save mr-1.5"></i> Save Patient
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="../assets/js/layout.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+document.getElementById('sidebarMount').innerHTML = getSidebarHTML('patients');
+document.getElementById('headerMount').innerHTML  = getHeaderHTML('Patients');
+
+let allPatients = [];
+let currentPage = 1;
+const PER_PAGE  = 12;
+
+const PHONE_REGEX = /^\+639\d{9}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const fieldErrorMap = { fFirst: 'errFirst', fLast: 'errLast', fDob: 'errDob', fPhone: 'errPhone', fEmail: 'errEmail', fGender: 'errGender' };
+
+function escHtml(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function clearFieldError(inputId) {
+    const errId = fieldErrorMap[inputId];
+    const err = errId ? document.getElementById(errId) : null;
+    const input = document.getElementById(inputId);
+    if (err) { err.textContent = ''; err.classList.add('hidden'); }
+    if (input) input.classList.remove('border-red-500');
+}
+
+function clearPatientFormErrors() {
+    Object.keys(fieldErrorMap).forEach(clearFieldError);
+}
+
+function setFieldError(inputId, message) {
+    const err = document.getElementById(fieldErrorMap[inputId]);
+    const input = document.getElementById(inputId);
+    if (err) { err.textContent = message; err.classList.remove('hidden'); }
+    if (input) input.classList.add('border-red-500');
+}
+
+function setDobMax() {
+    const dob = document.getElementById('fDob');
+    if (dob) dob.max = new Date().toISOString().split('T')[0];
+}
+
+function displayPhoneForInput(stored) {
+    if (!stored) return '';
+    return formatPHPhone(stored) || '';
+}
+
+Object.keys(fieldErrorMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => clearFieldError(id));
+});
+
+// ── Load ──────────────────────────────────────────────────────────────────
+async function loadPatients() {
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('statusFilter').value;
+    try {
+        allPatients = await api.get('patients.php', { search, status });
+        currentPage = 1;
+        renderTable();
+        updateStats();
+    } catch (e) {
+        showToast('Failed to load patients: ' + e.message, 'error');
+    }
+}
+
+function updateStats() {
+    document.getElementById('statTotal').textContent  = allPatients.length;
+    document.getElementById('statActive').textContent = allPatients.filter(p => p.status === 'active').length;
+    document.getElementById('statMale').textContent   = allPatients.filter(p => p.gender === 'Male').length;
+    document.getElementById('statFemale').textContent = allPatients.filter(p => p.gender === 'Female').length;
+}
+
+function renderTable() {
+    const start = (currentPage - 1) * PER_PAGE;
+    const page  = allPatients.slice(start, start + PER_PAGE);
+    const total = allPatients.length;
+
+    document.getElementById('tableInfo').textContent =
+        total === 0 ? 'No patients found'
+                    : `Showing ${start + 1}–${Math.min(start + page.length, total)} of ${total}`;
+
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = start + page.length >= total;
+
+    if (page.length === 0) {
+        document.getElementById('patientsTable').innerHTML =
+            `<tr><td colspan="8" class="px-5 py-12 text-center text-gray-400">
+                <i class="fas fa-users text-3xl mb-3 block text-gray-200"></i>
+                No patients found. Try adjusting your search or filter.
+             </td></tr>`;
+        return;
+    }
+
+    document.getElementById('patientsTable').innerHTML = page.map(p => {
+        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+        const safeName = escHtml(name);
+        const safePatientNo = escHtml(p.patient_number || '');
+        const safePhone = escHtml(p.phone ? (formatPHPhone(p.phone) || p.phone) : '—');
+        const safeEmail = escHtml(p.email || '');
+        const safeGender = escHtml(p.gender || '—');
+        const safeStatus = escHtml(p.status || '');
+        const patientId = parseInt(p.id, 10) || 0;
+        const age  = p.date_of_birth
+            ? new Date().getFullYear() - new Date(p.date_of_birth).getFullYear()
+            : '—';
+        const avatarColors = ['bg-primary/20 text-primary', 'bg-accent/20 text-accent',
+            'bg-secondary/20 text-secondary', 'bg-blue-500/20 text-blue-500',
+            'bg-purple-500/20 text-purple-500'];
+        const avatarClass = avatarColors[p.id % avatarColors.length];
+
+        return `
+        <tr class="hover:bg-neutral/40 transition-colors">
+            <td class="px-5 py-3.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full ${avatarClass} flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        ${escHtml(getInitials(name))}
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-secondary">${safeName}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-5 py-3.5 text-sm text-gray-500 font-mono">${safePatientNo}</td>
+            <td class="px-5 py-3.5">
+                <p class="text-sm text-secondary">${safePhone}</p>
+                <p class="text-xs text-gray-400">${safeEmail}</p>
+            </td>
+            <td class="px-5 py-3.5 text-sm text-secondary">${safeGender} · ${age}</td>
+            <td class="px-5 py-3.5 text-sm text-secondary">${p.total_appointments || 0}</td>
+            <td class="px-5 py-3.5 text-sm text-secondary">${p.last_visit ? formatDate(p.last_visit) : '<span class="text-gray-300">No visit</span>'}</td>
+            <td class="px-5 py-3.5">
+                <span class="px-2.5 py-1 text-xs rounded-full font-semibold ${getStatusClass(p.status)} capitalize">${safeStatus}</span>
+            </td>
+            <td class="px-5 py-3.5 text-right">
+                <div class="flex justify-end gap-1.5">
+                    <button onclick="viewPatient(${patientId})"
+                        class="p-1.5 bg-primary/10 rounded-lg text-primary hover:bg-primary/25 transition-colors" title="View">
+                        <i class="fas fa-eye text-xs"></i>
+                    </button>
+                    <button onclick="editPatient(${patientId})"
+                        class="p-1.5 bg-accent/10 rounded-lg text-accent hover:bg-accent/25 transition-colors" title="Edit">
+                        <i class="fas fa-edit text-xs"></i>
+                    </button>
+                    <button onclick="deletePatient(${patientId}, ${JSON.stringify(name)})"
+                        class="p-1.5 bg-red-50 rounded-lg text-red-400 hover:bg-red-100 transition-colors" title="Delete">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────
+document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTable(); } });
+document.getElementById('nextPage').addEventListener('click', () => {
+    if (currentPage * PER_PAGE < allPatients.length) { currentPage++; renderTable(); }
+});
+
+// ── Search / Filter ───────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input',  debounce(loadPatients, 400));
+document.getElementById('statusFilter').addEventListener('change', loadPatients);
+
+// ── Add ───────────────────────────────────────────────────────────────────
+document.getElementById('addPatientBtn').addEventListener('click', () => {
+    document.getElementById('modalTitle').textContent = 'Add Patient';
+    document.getElementById('patientForm').reset();
+    document.getElementById('patientId').value = '';
+    document.getElementById('statusField').classList.add('hidden');
+    clearPatientFormErrors();
+    setDobMax();
+    openModal('patientModal');
+    attachPhoneFormat(document.getElementById('fPhone'));
+});
+
+function formatPatientViewDate(ymd) {
+    if (!ymd) return '—';
+    const [y, m, d] = String(ymd).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+async function viewPatient(id) {
+    try {
+        const p = await api.get('patients.php', { id, include_history: 1 });
+        document.getElementById('patientViewTitle').textContent =
+            `${escHtml(p.first_name || '')} ${escHtml(p.last_name || '')}`.trim() || 'Patient';
+        document.getElementById('patientViewSummary').innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <p><span class="text-gray-400">ID</span><br><span class="font-mono">${escHtml(p.patient_number || '—')}</span></p>
+                <p><span class="text-gray-400">Phone</span><br>${escHtml(p.phone ? (formatPHPhone(p.phone) || p.phone) : '—')}</p>
+                <p><span class="text-gray-400">Email</span><br>${escHtml(p.email || '—')}</p>
+                <p><span class="text-gray-400">DOB</span><br>${escHtml(p.date_of_birth || '—')}</p>
+            </div>`;
+        const hist = Array.isArray(p.appointment_history) ? p.appointment_history : [];
+        const histEl = document.getElementById('patientViewHistory');
+        if (!hist.length) {
+            histEl.innerHTML = '<p class="text-gray-400">No appointments on file.</p>';
+        } else {
+            histEl.innerHTML =
+                '<ul class="divide-y divide-neutral-dark border border-neutral-dark rounded-xl overflow-hidden">' +
+                hist.map((a) => {
+                    const dt = formatPatientViewDate(a.appointment_date);
+                    const tm = formatTime(a.appointment_time);
+                    const pay = a.payment_status ? escHtml(String(a.payment_status)) : '—';
+                    return `<li class="px-4 py-3 bg-white flex flex-wrap gap-x-3 gap-y-1">
+                        <span class="font-medium text-secondary">${escHtml(dt)}</span>
+                        <span class="text-gray-400">${escHtml(tm)}</span>
+                        <span class="flex-1 min-w-0">${escHtml(a.dentist_name || '—')} — ${escHtml(a.procedure_name || '—')}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-neutral">${escHtml(a.status || '')}</span>
+                        <span class="text-xs text-gray-500">Payment: ${pay}</span>
+                    </li>`;
+                }).join('') +
+                '</ul>';
+        }
+        openModal('patientViewModal');
+    } catch (e) {
+        showToast('Could not load patient: ' + e.message, 'error');
+    }
+}
+
+// ── Edit ──────────────────────────────────────────────────────────────────
+async function editPatient(id) {
+    try {
+        const p = await api.get('patients.php', { id });
+        document.getElementById('modalTitle').textContent = 'Edit Patient';
+        document.getElementById('patientId').value  = p.id;
+        document.getElementById('fFirst').value     = p.first_name || '';
+        document.getElementById('fLast').value      = p.last_name  || '';
+        document.getElementById('fEmail').value     = p.email      || '';
+        document.getElementById('fPhone').value     = displayPhoneForInput(p.phone || '');
+        document.getElementById('fDob').value       = p.date_of_birth || '';
+        clearPatientFormErrors();
+        setDobMax();
+        document.getElementById('fGender').value    = p.gender     || '';
+        document.getElementById('fAddress').value   = p.address    || '';
+        document.getElementById('fNotes').value     = p.medical_notes || '';
+        document.getElementById('fStatus').value    = p.status     || 'active';
+        document.getElementById('statusField').classList.remove('hidden');
+        openModal('patientModal');
+        attachPhoneFormat(document.getElementById('fPhone'));
+    } catch (e) {
+        showToast('Could not load patient: ' + e.message, 'error');
+    }
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────
+async function deletePatient(id, name) {
+    const ok = await confirmDialog(`Delete <strong>${name}</strong>? All their appointment and payment records will also be removed.`);
+    if (!ok) return;
+    try {
+        await api.delete('patients.php', { id });
+        showToast('Patient deleted successfully.');
+        loadPatients();
+    } catch (e) {
+        showToast('Failed to delete: ' + e.message, 'error');
+    }
+}
+
+// ── Form submit ───────────────────────────────────────────────────────────
+document.getElementById('patientForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    clearPatientFormErrors();
+
+    const id          = document.getElementById('patientId').value;
+    const first       = document.getElementById('fFirst').value.trim();
+    const last        = document.getElementById('fLast').value.trim();
+    const dob         = document.getElementById('fDob').value;
+    const phoneNorm   = document.getElementById('fPhone').value.replace(/\s/g, '');
+    const email       = document.getElementById('fEmail').value.trim();
+    const maxDob      = new Date().toISOString().split('T')[0];
+
+    let valid = true;
+    if (!first) { setFieldError('fFirst', 'First name is required.'); valid = false; }
+    if (!last) { setFieldError('fLast', 'Last name is required.'); valid = false; }
+    if (!dob) { setFieldError('fDob', 'Date of birth is required.'); valid = false; }
+    else if (dob > maxDob) { setFieldError('fDob', 'Date of birth cannot be in the future.'); valid = false; }
+    if (!phoneNorm) { setFieldError('fPhone', 'Contact number is required.'); valid = false; }
+    else if (!PHONE_REGEX.test(phoneNorm)) {
+        setFieldError('fPhone', 'Enter a valid PH number (e.g. +63 912 345 6789)');
+        valid = false;
+    }
+    if (email && !EMAIL_REGEX.test(email)) {
+        setFieldError('fEmail', 'Enter a valid email address.');
+        valid = false;
+    }
+    const genderEl = document.getElementById('fGender');
+    if (!genderEl.value) {
+        setFieldError('fGender', 'Please select a gender.');
+        valid = false;
+    }
+    if (!valid) return;
+
+    if (email) {
+        try {
+            const params = { check_email: email };
+            if (id) params.exclude_id = id;
+            const chk = await api.get('patients.php', params);
+            if (chk.exists) {
+                setFieldError('fEmail', 'Email already registered.');
+                return;
+            }
+        } catch (err) {
+            showToast('Could not verify email: ' + err.message, 'error');
+            return;
+        }
+    }
+
+    const body = {
+        first_name:    first,
+        last_name:     last,
+        email:         email,
+        phone:         phoneNorm,
+        date_of_birth: dob || null,
+        gender:        document.getElementById('fGender').value,
+        address:       document.getElementById('fAddress').value.trim(),
+        medical_notes: document.getElementById('fNotes').value.trim(),
+        status:        document.getElementById('fStatus').value || 'active',
+    };
+
+    const btn = document.getElementById('savePatientBtn');
+    btn.disabled   = true;
+    btn.innerHTML  = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Saving…';
+    try {
+        if (id) {
+            await api.put('patients.php', body, { id });
+            showToast('Patient updated successfully!');
+        } else {
+            await api.post('patients.php', body);
+            showToast('Patient added successfully!');
+        }
+        closeModal('patientModal');
+        loadPatients();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-save mr-1.5"></i> Save Patient';
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+(async () => {
+    await checkAuth();
+    loadPatients();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+/* Edroso Dental Clinic - Global Styles */
+
+:root {
+    --primary: #22ccb2;
+    --primary-dark: #1bab96;
+    --secondary: #2c3e50;
+    --accent: #f39c12;
+}
+
+/* Sidebar collapse */
+.sidebar-collapsed {
+    transform: translateX(-100%);
+}
+
+/* Modal animation */
+.modal-overlay {
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    opacity: 0;
+    visibility: hidden;
+}
+.modal-overlay.modal-open {
+    opacity: 1;
+    visibility: visible;
+}
+.modal-overlay .modal-box {
+    transform: translateY(-16px) scale(0.98);
+    transition: transform 0.25s ease;
+}
+.modal-overlay.modal-open .modal-box {
+    transform: translateY(0) scale(1);
+}
+
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Table row hover */
+tbody tr:hover { background-color: rgba(34,204,178,0.03); }
+
+/* Card hover */
+.stat-card { transition: box-shadow 0.2s, transform 0.2s; }
+.stat-card:hover { box-shadow: 0 8px 24px rgba(34,204,178,0.12); transform: translateY(-2px); }
+
+/* Input focus ring */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    ring: 2px solid var(--primary);
+}
+
+/* Calendar day */
+.cal-day:hover { background: rgba(34,204,178,0.06); cursor: pointer; }
+.cal-day.today { ring: 2px solid var(--primary); background: rgba(34,204,178,0.05); }
+
+/* Loading skeleton */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 6px;
+}
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Slide-in animation */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.slide-up { animation: slideUp 0.3s ease forwards; }
+
+/* File upload: full control visible + teal "Choose file" (Tailwind `file:` unreliable with CDN) */
+input.input-file-styled {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.35rem 0.5rem;
+    box-sizing: border-box;
+    border: 1px solid rgba(27, 171, 150, 0.45);
+    border-radius: 0.625rem;
+    background-color: rgba(34, 204, 178, 0.08);
+    color: var(--secondary);
+    font-size: 0.875rem;
+}
+input.input-file-styled:hover {
+    border-color: var(--primary-dark);
+    background-color: rgba(34, 204, 178, 0.12);
+}
+input.input-file-styled:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(34, 204, 178, 0.25);
+}
+input.input-file-styled::file-selector-button {
+    margin-right: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #1bab96;
+    background-color: #22ccb2;
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+input.input-file-styled::file-selector-button:hover {
+    background-color: #1bab96;
+}
+input.input-file-styled::-webkit-file-upload-button {
+    margin-right: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #1bab96;
+    background-color: #22ccb2;
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+input.input-file-styled::-webkit-file-upload-button:hover {
+    background-color: #1bab96;
+}
+input.input-file-styled:disabled::file-selector-button,
+input.input-file-styled:disabled::-webkit-file-upload-button {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Save in dentist modal — solid teal (Tailwind bg-primary can be missing after CDN scan) */
+#dentistSaveBtn {
+    background-color: #22ccb2;
+    color: #fff;
+}
+#dentistSaveBtn:hover:not(:disabled) {
+    background-color: #1bab96;
+}
+
+/* Admin mobile touch targets */
+@media (max-width: 640px) {
+    button,
+    a[role="button"],
+    input[type="button"],
+    input[type="submit"] {
+        min-height: 44px;
+    }
+}

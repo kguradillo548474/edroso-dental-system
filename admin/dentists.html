@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dentists - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'},fontFamily:{inter:['Inter','sans-serif']}}}}</script>
+</head>
+<body class="font-inter bg-neutral min-h-screen flex">
+    <div id="sidebarMount"></div>
+    <div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+        <div id="headerMount"></div>
+        <main class="pt-20 px-6 pb-8">
+
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+                <div class="bg-accent/10 border border-accent/30 rounded-xl p-4 flex items-start gap-3 text-sm flex-1 min-w-[240px]">
+                    <i class="fas fa-info-circle text-accent mt-0.5"></i>
+                    <div>
+                        <p class="font-medium text-secondary">Dentist Management</p>
+                        <p class="text-gray-600 text-xs mt-0.5">View and manage the clinic's dental practitioners. Upload a profile photo (max 2MB). Use <strong>View profile &amp; schedule</strong> to set each dentist&rsquo;s weekly hours—those hours drive the patient portal, public booking, and admin slot picker.</p>
+                    </div>
+                </div>
+                <button type="button" id="addDentistBtn" class="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-medium shadow-sm flex items-center gap-2">
+                    <i class="fas fa-user-plus"></i> Add Dentist
+                </button>
+            </div>
+
+            <div id="dentistCards" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="skeleton h-64 rounded-xl"></div>
+                <div class="skeleton h-64 rounded-xl"></div>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+                <h3 class="font-semibold text-secondary mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button onclick="location.href='appointments.html'" class="p-4 border border-neutral-dark rounded-xl hover:bg-neutral transition-colors flex items-center gap-3">
+                        <div class="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center"><i class="fas fa-calendar-check text-primary"></i></div>
+                        <div class="text-left"><p class="font-medium text-secondary text-sm">View Appointments</p><p class="text-xs text-gray-400">Manage schedule</p></div>
+                    </button>
+                    <button onclick="location.href='patients.html'" class="p-4 border border-neutral-dark rounded-xl hover:bg-neutral transition-colors flex items-center gap-3">
+                        <div class="w-10 h-10 bg-accent/15 rounded-full flex items-center justify-center"><i class="fas fa-user-injured text-accent"></i></div>
+                        <div class="text-left"><p class="font-medium text-secondary text-sm">Patient List</p><p class="text-xs text-gray-400">View all patients</p></div>
+                    </button>
+                    <button onclick="location.href='payments.html'" class="p-4 border border-neutral-dark rounded-xl hover:bg-neutral transition-colors flex items-center gap-3">
+                        <div class="w-10 h-10 bg-secondary/15 rounded-full flex items-center justify-center"><i class="fas fa-file-invoice-dollar text-secondary"></i></div>
+                        <div class="text-left"><p class="font-medium text-secondary text-sm">Payments</p><p class="text-xs text-gray-400">Track revenue</p></div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-6 shadow-sm">
+                <h3 class="font-semibold text-secondary mb-5">Workload Comparison</h3>
+                <div id="workloadBars" class="space-y-4">
+                    <div class="skeleton h-8 rounded"></div>
+                    <div class="skeleton h-8 rounded"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add / Edit Dentist Modal -->
+    <div id="dentistModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+        <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-lg mx-4 modal-box max-h-[90vh] min-h-0 flex flex-col overflow-hidden">
+            <div class="flex justify-between items-center mb-5 flex-shrink-0">
+                <h3 class="font-semibold text-secondary text-xl" id="dentistModalTitle">Edit Dentist</h3>
+                <button onclick="closeModal('dentistModal')" class="text-gray-400 hover:text-secondary"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <form id="dentistForm" class="flex flex-col min-h-0 flex-1">
+                <input type="hidden" id="dentistId">
+                <div class="space-y-4 mb-4 overflow-y-auto flex-1 min-h-0 pr-1">
+                    <div class="flex flex-col items-center">
+                        <div id="dPhotoPreviewWrap" class="w-28 h-28 rounded-full border-4 border-neutral-dark overflow-hidden bg-neutral flex items-center justify-center mb-3 hidden">
+                            <img id="dPhotoPreview" src="" alt="" class="w-full h-full object-cover">
+                        </div>
+                        <div id="dPhotoInitials" class="w-28 h-28 rounded-full border-4 border-neutral-dark bg-white flex items-center justify-center mb-3 text-3xl font-bold text-primary">?</div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload Photo</label>
+                        <div class="w-full max-w-md mx-auto rounded-xl border-2 border-primary/40 bg-primary/5 p-1">
+                            <input type="file" id="dPhoto" accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml,.jpg,.jpeg,.png,.webp,.svg" class="input-file-styled text-sm text-secondary w-full">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1.5">JPEG, PNG, WebP, or SVG — max 2MB</p>
+                        <div id="dPhotoActions" class="mt-2 hidden flex flex-wrap items-center justify-center gap-2">
+                            <button type="button" id="dRemovePhotoBtn" class="px-3 py-2 rounded-lg text-xs font-semibold border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                                Remove current photo
+                            </button>
+                            <button type="button" id="dResetPhotoBtn" class="px-3 py-2 rounded-lg text-xs font-semibold border border-neutral-dark text-secondary bg-white hover:bg-neutral transition-colors">
+                                Reset photo changes
+                            </button>
+                        </div>
+                    </div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input type="text" id="dName" required class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
+                        <select id="dSpec" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none bg-white">
+                            <option value="General Dentist">General Dentist</option>
+                            <option value="Orthodontist">Orthodontist</option>
+                            <option value="Pediatric Dentist">Pediatric Dentist</option>
+                            <option value="Endodontist">Endodontist</option>
+                            <option value="Periodontist">Periodontist</option>
+                        </select></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="dEmail" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                            <input type="text" id="dPhone" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"></div>
+                    </div>
+                    <div id="dStatusRow"><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="dStatus" class="w-full px-3 py-2 border border-neutral-dark rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 mt-auto border-t border-primary/20 flex-shrink-0 bg-white relative z-10 shadow-[0_-8px_24px_rgba(255,255,255,0.95)]">
+                    <button type="button" onclick="closeModal('dentistModal')" class="px-4 py-2.5 bg-neutral-dark text-secondary rounded-lg text-sm font-medium hover:bg-neutral-dark/80">Cancel</button>
+                    <button type="submit" id="dentistSaveBtn" class="px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dentist profile / schedule detail -->
+    <div id="dentistDetailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+        <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-2xl mx-4 modal-box max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-5">
+                <div class="flex gap-4">
+                    <div id="detailAvatar" class="w-20 h-20 rounded-full border-4 border-neutral-dark overflow-hidden bg-neutral flex-shrink-0 flex items-center justify-center text-2xl font-bold text-primary"></div>
+                    <div>
+                        <h3 class="font-bold text-secondary text-xl" id="detailName">—</h3>
+                        <p class="text-gray-500 text-sm" id="detailSpec">—</p>
+                        <p class="text-xs text-gray-400 mt-1" id="detailContact"></p>
+                    </div>
+                </div>
+                <button onclick="closeModal('dentistDetailModal')" class="text-gray-400 hover:text-secondary"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="border-t border-neutral-dark pt-4">
+                <h4 class="font-semibold text-secondary mb-3 flex items-center gap-2"><i class="fas fa-calendar-alt text-primary"></i> Schedule</h4>
+                <p class="text-xs text-gray-400 mb-2">Upcoming scheduled appointments (Scheduled / Confirmed)</p>
+                <div class="overflow-x-auto rounded-xl border border-neutral-dark">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-neutral/60 text-left text-xs font-semibold text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2">Date</th>
+                                <th class="px-4 py-2">Time</th>
+                                <th class="px-4 py-2">Patient</th>
+                                <th class="px-4 py-2">Procedure</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailScheduleBody" class="divide-y divide-neutral-dark text-secondary"></tbody>
+                    </table>
+                </div>
+                <div class="mt-6 border-t border-neutral-dark pt-4">
+                    <h4 class="font-semibold text-secondary mb-2 flex items-center gap-2"><i class="fas fa-clock text-primary"></i> Weekly availability (portal &amp; admin slots)</h4>
+                    <p class="text-xs text-gray-500 mb-3">Set working hours per day. Slot length controls generated bookable times.</p>
+                    <div id="scheduleEditorMount" class="space-y-2 text-sm"></div>
+                    <button type="button" id="saveScheduleBtn" class="mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors">Save schedule</button>
+                </div>
+            </div>
+            <div class="flex justify-end mt-5">
+                <button type="button" onclick="closeModal('dentistDetailModal')" class="px-4 py-2 bg-neutral-dark text-secondary rounded-lg text-sm font-medium">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/layout.js"></script>
+    <script src="../assets/js/app.js"></script>
+    <script>
+    document.getElementById('sidebarMount').innerHTML = getSidebarHTML('dentists');
+    document.getElementById('headerMount').innerHTML = getHeaderHTML('Dentists');
+
+    let dentistsData = [];
+    let csrfToken = '';
+    const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+    const colors = ['primary'];
+    let removeCurrentPhoto = false;
+    let currentEditingPhotoUrl = '';
+    let currentEditingDentistName = '';
+    let scheduleDentistId = 0;
+    const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+    async function loadScheduleEditor(dentistId) {
+        scheduleDentistId = dentistId;
+        const mount = document.getElementById('scheduleEditorMount');
+        if (!mount) return;
+        mount.innerHTML = '<p class="text-gray-400 text-sm">Loading schedule…</p>';
+        try {
+            const data = await api.get('dentist_schedules.php', { dentist_id: dentistId });
+            const rows = Array.isArray(data.schedules) ? data.schedules : [];
+            const byDay = {};
+            rows.forEach(r => { byDay[r.day_of_week] = r; });
+            mount.innerHTML = WEEKDAYS.map(day => {
+                const r = byDay[day] || { start_time: '09:00', end_time: '17:00', slot_duration_minutes: 30, is_active: day === 'Sunday' ? 0 : 1 };
+                const st = (r.start_time || '09:00:00').toString().slice(0,5);
+                const en = (r.end_time || '17:00:00').toString().slice(0,5);
+                const dur = r.slot_duration_minutes || 30;
+                const on = parseInt(r.is_active, 10) ? 'checked' : '';
+                return `<div class="flex flex-wrap items-center gap-2 p-2 rounded-lg border border-neutral-dark bg-neutral/30" data-sched-day="${day}">
+                    <label class="flex items-center gap-2 min-w-[140px]"><input type="checkbox" class="sched-active" ${on} /> <span class="font-medium">${day}</span></label>
+                    <input type="time" class="sched-start px-2 py-1 border rounded text-xs" value="${st}" />
+                    <span class="text-gray-400">to</span>
+                    <input type="time" class="sched-end px-2 py-1 border rounded text-xs" value="${en}" />
+                    <label class="text-xs text-gray-600 ml-2">Slot (min) <input type="number" class="sched-dur w-16 px-1 py-0.5 border rounded" min="5" max="120" value="${dur}" /></label>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            mount.innerHTML = '<p class="text-red-500 text-sm">Could not load schedule.</p>';
+        }
+    }
+
+    document.getElementById('saveScheduleBtn').addEventListener('click', async function () {
+        if (!scheduleDentistId) return;
+        const mount = document.getElementById('scheduleEditorMount');
+        const blocks = mount.querySelectorAll('[data-sched-day]');
+        try {
+            for (const b of blocks) {
+                const day = b.getAttribute('data-sched-day');
+                const active = b.querySelector('.sched-active').checked ? 1 : 0;
+                const start = b.querySelector('.sched-start').value;
+                const end = b.querySelector('.sched-end').value;
+                const dur = parseInt(b.querySelector('.sched-dur').value, 10) || 30;
+                await api.post('dentist_schedules.php', {
+                    dentist_id: scheduleDentistId,
+                    day_of_week: day,
+                    start_time: start,
+                    end_time: end,
+                    slot_duration_minutes: dur,
+                    is_active: active,
+                });
+            }
+            showToast('Schedule saved.');
+        } catch (e) {
+            showToast('Save failed: ' + e.message, 'error');
+        }
+    });
+
+    async function loadDentists() {
+        await checkAuth();
+        if (!csrfToken) {
+            const csrfRes = await api.get('auth.php', { action: 'csrf' });
+            csrfToken = String(csrfRes.csrf_token || '');
+        }
+        try {
+            dentistsData = await api.get('dentists.php');
+            renderCards();
+            renderWorkload();
+        } catch (e) { showToast('Failed to load dentists', 'error'); }
+    }
+
+    /** API returns paths under assets/; admin pages live in admin/ so prefix ../ */
+    function resolveAssetUrl(rel) {
+        if (!rel) return '';
+        if (/^https?:\/\//i.test(rel)) return rel;
+        if (rel.startsWith('/')) return rel;
+        return '../' + String(rel).replace(/^\.\//, '');
+    }
+
+    function photoAvatarHtml(d, colorName, sizeClass) {
+        if (d.photo_url) {
+            const src = resolveAssetUrl(d.photo_url);
+            return `<div class="${sizeClass} rounded-full border-4 border-white shadow-md overflow-hidden bg-white flex-shrink-0 relative">
+                <img src="${escapeHtml(src)}?t=${d.id}" alt="" class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async">
+            </div>`;
+        }
+        return `<div class="${sizeClass} rounded-full bg-white shadow-md flex items-center justify-center border-4 border-white flex-shrink-0">
+            <span class="text-2xl font-bold text-${colorName}">${getInitials(d.name)}</span>
+        </div>`;
+    }
+
+    function renderCards() {
+        document.getElementById('dentistCards').innerHTML = dentistsData.map((d, i) => {
+            const c = colors[i % 2];
+            return `
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="h-36 bg-${c}/15 flex items-center justify-center relative">
+                    <div class="absolute top-3 right-3 flex gap-1">
+                        <button type="button" onclick="viewDentist(${d.id})" class="p-2 bg-white rounded-lg shadow text-primary hover:bg-neutral-dark transition-colors" title="View profile & schedule">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
+                        <button type="button" onclick="editDentist(${d.id})" class="p-2 bg-white rounded-lg shadow text-secondary hover:bg-neutral-dark transition-colors" title="Edit">
+                            <i class="fas fa-edit text-sm"></i>
+                        </button>
+                    </div>
+                    ${photoAvatarHtml(d, c, 'w-20 h-20')}
+                </div>
+                <div class="p-5">
+                    <h3 class="text-lg font-semibold text-secondary text-center mb-1">${escapeHtml(d.name)}</h3>
+                    <p class="text-gray-400 text-sm text-center mb-4">${escapeHtml(d.specialization || 'General Dentistry')}</p>
+                    <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                        <div class="bg-neutral rounded-lg p-2">
+                            <p class="text-xl font-bold text-${c}">${d.total_patients || 0}</p>
+                            <p class="text-xs text-gray-400">Patients</p>
+                        </div>
+                        <div class="bg-neutral rounded-lg p-2">
+                            <p class="text-xl font-bold text-${c}">${d.today_appointments || 0}</p>
+                            <p class="text-xs text-gray-400">Today</p>
+                        </div>
+                        <div class="bg-neutral rounded-lg p-2">
+                            <p class="text-xl font-bold text-${c}">${d.satisfaction_rate || 0}%</p>
+                            <p class="text-xs text-gray-400">Rating</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 text-sm">
+                        ${d.email ? `<div class="flex items-center gap-1 text-gray-500 truncate"><i class="fas fa-envelope text-xs"></i> ${escapeHtml(d.email)}</div>` : ''}
+                    </div>
+                    <div class="mt-3 flex items-center justify-between">
+                        <span class="text-xs px-2 py-1 rounded-full ${getStatusClass(d.status)}">${d.status}</span>
+                        <span class="text-xs text-gray-400">${d.total_appointments || 0} total appointments</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function renderWorkload() {
+        const maxAppts = Math.max(...dentistsData.map(d => parseInt(d.total_appointments) || 0), 1);
+        document.getElementById('workloadBars').innerHTML = dentistsData.map((d, i) => {
+            const pct = Math.round((d.total_appointments || 0) / maxAppts * 100);
+            const c = colors[i % 2];
+            return `<div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-sm text-secondary font-medium">${escapeHtml(d.name)}</span>
+                    <span class="text-sm text-gray-400">${d.total_appointments || 0} appointments</span>
+                </div>
+                <div class="h-3 bg-neutral-dark rounded-full overflow-hidden">
+                    <div class="h-full bg-${c} rounded-full transition-all duration-700" style="width:${pct}%"></div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function resetPhotoUi() {
+        document.getElementById('dPhoto').value = '';
+        document.getElementById('dPhotoPreview').src = '';
+        document.getElementById('dPhotoPreviewWrap').classList.add('hidden');
+        document.getElementById('dPhotoInitials').classList.remove('hidden');
+    }
+
+    function showExistingPhotoOrInitials() {
+        resetPhotoUi();
+        const hasExisting = !!currentEditingPhotoUrl;
+        if (hasExisting && !removeCurrentPhoto) {
+            document.getElementById('dPhotoPreview').src = resolveAssetUrl(currentEditingPhotoUrl) + '?t=' + Date.now();
+            document.getElementById('dPhotoPreviewWrap').classList.remove('hidden');
+            document.getElementById('dPhotoInitials').classList.add('hidden');
+        } else {
+            document.getElementById('dPhotoInitials').textContent = getInitials(currentEditingDentistName || '?');
+            document.getElementById('dPhotoInitials').classList.remove('hidden');
+        }
+    }
+
+    function syncPhotoActionButtons() {
+        const actions = document.getElementById('dPhotoActions');
+        const removeBtn = document.getElementById('dRemovePhotoBtn');
+        const resetBtn = document.getElementById('dResetPhotoBtn');
+        const editingExisting = !!document.getElementById('dentistId').value;
+        const hasExisting = !!currentEditingPhotoUrl;
+        actions.classList.toggle('hidden', !editingExisting);
+        removeBtn.classList.toggle('hidden', !hasExisting);
+        removeBtn.textContent = removeCurrentPhoto ? 'Undo remove photo' : 'Remove current photo';
+        resetBtn.classList.toggle('hidden', !hasExisting && !document.getElementById('dPhoto').value);
+    }
+
+    function showPhotoPreviewFromFile(file) {
+        if (!file) return;
+        if (file.size > MAX_PHOTO_BYTES) {
+            showToast('Photo must be 2MB or less.', 'error');
+            document.getElementById('dPhoto').value = '';
+            return;
+        }
+        const r = new FileReader();
+        r.onload = () => {
+            document.getElementById('dPhotoPreview').src = r.result;
+            document.getElementById('dPhotoPreviewWrap').classList.remove('hidden');
+            document.getElementById('dPhotoInitials').classList.add('hidden');
+        };
+        r.readAsDataURL(file);
+    }
+
+    document.getElementById('dPhoto').addEventListener('change', function() {
+        const f = this.files && this.files[0];
+        removeCurrentPhoto = false;
+        if (f) showPhotoPreviewFromFile(f);
+        else showExistingPhotoOrInitials();
+        syncPhotoActionButtons();
+    });
+
+    document.getElementById('dRemovePhotoBtn').addEventListener('click', function () {
+        if (!currentEditingPhotoUrl) return;
+        removeCurrentPhoto = !removeCurrentPhoto;
+        document.getElementById('dPhoto').value = '';
+        showExistingPhotoOrInitials();
+        syncPhotoActionButtons();
+    });
+
+    document.getElementById('dResetPhotoBtn').addEventListener('click', function () {
+        removeCurrentPhoto = false;
+        document.getElementById('dPhoto').value = '';
+        showExistingPhotoOrInitials();
+        syncPhotoActionButtons();
+    });
+
+    document.getElementById('addDentistBtn').addEventListener('click', () => {
+        document.getElementById('dentistModalTitle').textContent = 'Add Dentist';
+        document.getElementById('dentistId').value = '';
+        document.getElementById('dentistForm').reset();
+        removeCurrentPhoto = false;
+        currentEditingPhotoUrl = '';
+        currentEditingDentistName = '';
+        resetPhotoUi();
+        document.getElementById('dPhotoInitials').textContent = '?';
+        document.getElementById('dStatusRow').classList.add('hidden');
+        syncPhotoActionButtons();
+        openModal('dentistModal');
+    });
+
+    function editDentist(id) {
+        const d = dentistsData.find(x => x.id == id);
+        if (!d) return;
+        document.getElementById('dentistModalTitle').textContent = 'Edit Dentist';
+        document.getElementById('dentistId').value = d.id;
+        document.getElementById('dName').value = d.name;
+        const specVal = d.specialization || 'General Dentist';
+        document.getElementById('dSpec').value = ['General Dentist','Orthodontist','Pediatric Dentist','Endodontist','Periodontist'].includes(specVal) ? specVal : 'General Dentist';
+        document.getElementById('dEmail').value = d.email || '';
+        document.getElementById('dPhone').value = d.phone || '';
+        document.getElementById('dStatus').value = d.status;
+        document.getElementById('dStatusRow').classList.remove('hidden');
+        removeCurrentPhoto = false;
+        currentEditingPhotoUrl = d.photo_url || '';
+        currentEditingDentistName = d.name || '';
+        showExistingPhotoOrInitials();
+        syncPhotoActionButtons();
+        openModal('dentistModal');
+    }
+
+    function fillDetailAvatar(av, d) {
+        av.innerHTML = '';
+        av.className =
+            'w-20 h-20 rounded-full border-4 border-neutral-dark overflow-hidden bg-neutral flex-shrink-0 flex items-center justify-center text-2xl font-bold text-primary relative';
+        const initials = getInitials(d.name || '?');
+        if (d.photo_url) {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.className = 'absolute inset-0 h-full w-full object-cover';
+            img.decoding = 'async';
+            img.src = `${resolveAssetUrl(d.photo_url)}?t=${Date.now()}`;
+            img.addEventListener('error', () => {
+                av.innerHTML = '';
+                const span = document.createElement('span');
+                span.className = 'text-2xl font-bold text-primary';
+                span.textContent = initials;
+                av.appendChild(span);
+            }, { once: true });
+            av.appendChild(img);
+        } else {
+            const span = document.createElement('span');
+            span.className = 'text-2xl font-bold text-primary';
+            span.textContent = initials;
+            av.appendChild(span);
+        }
+    }
+
+    async function viewDentist(id) {
+        try {
+            const d = await api.get('dentists.php', { id });
+            const rows = await api.get('appointments.php', { dentist_id: id, status: 'scheduled' });
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+            const upcoming = (rows || []).filter(a => (a.appointment_date || '') >= todayStr)
+                .sort((a,b) => (a.appointment_date+a.appointment_time).localeCompare(b.appointment_date+b.appointment_time));
+
+            document.getElementById('detailName').textContent = d.name || '—';
+            document.getElementById('detailSpec').textContent = d.specialization || 'General Dentistry';
+            document.getElementById('detailContact').innerHTML = [d.email, d.phone].filter(Boolean).map(x => escapeHtml(x)).join(' · ') || '<span class="text-gray-400">No contact on file</span>';
+
+            fillDetailAvatar(document.getElementById('detailAvatar'), d);
+
+            const tbody = document.getElementById('detailScheduleBody');
+            if (!upcoming.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No upcoming scheduled appointments.</td></tr>';
+            } else {
+                tbody.innerHTML = upcoming.map(a => `
+                    <tr class="hover:bg-neutral/40">
+                        <td class="px-4 py-2">${formatDate(a.appointment_date)}</td>
+                        <td class="px-4 py-2">${formatTime(a.appointment_time)}</td>
+                        <td class="px-4 py-2">${escapeHtml(a.patient_name || '—')}</td>
+                        <td class="px-4 py-2">${escapeHtml(a.procedure_name || '—')}</td>
+                    </tr>`).join('');
+            }
+            openModal('dentistDetailModal');
+            loadScheduleEditor(id);
+        } catch (e) {
+            showToast('Could not load dentist: ' + e.message, 'error');
+        }
+    }
+
+    async function saveDentistMultipart() {
+        const id = document.getElementById('dentistId').value;
+        const isNew = !id;
+        const fd = new FormData();
+        fd.append('name', document.getElementById('dName').value.trim());
+        fd.append('specialization', document.getElementById('dSpec').value.trim());
+        fd.append('email', document.getElementById('dEmail').value.trim());
+        fd.append('phone', document.getElementById('dPhone').value.trim());
+        if (!isNew) fd.append('status', document.getElementById('dStatus').value);
+        const fileInput = document.getElementById('dPhoto');
+        if (fileInput.files && fileInput.files[0]) {
+            if (fileInput.files[0].size > MAX_PHOTO_BYTES) {
+                throw new Error('Photo must be 2MB or less.');
+            }
+            fd.append('photo', fileInput.files[0], fileInput.files[0].name);
+        }
+        if (!isNew && removeCurrentPhoto && !(fileInput.files && fileInput.files[0])) {
+            fd.append('remove_photo', '1');
+        }
+
+        const url = new URL('../api/dentists.php', window.location.href);
+        // PHP does not populate $_POST for multipart/form-data on PUT — always POST; pass id for edits.
+        if (!isNew) {
+            url.searchParams.set('id', id);
+            fd.append('id', id);
+        }
+
+        const res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+            body: fd,
+            credentials: 'same-origin'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    }
+
+    document.getElementById('dentistForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('dentistSaveBtn');
+        btn.disabled = true;
+        try {
+            await saveDentistMultipart();
+            showToast(document.getElementById('dentistId').value ? 'Dentist updated!' : 'Dentist added!');
+            closeModal('dentistModal');
+            loadDentists();
+        } catch (err) {
+            showToast('Error: ' + err.message, 'error');
+        }
+        btn.disabled = false;
+    });
+
+    loadDentists();
+    </script>
+</body>
+</html>

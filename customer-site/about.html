@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn about Edroso Dental Clinic, our mission for compassionate dental care, and the experienced team behind your healthiest smile.">
+    <meta property="og:title" content="About Edroso Dental Clinic">
+    <meta property="og:description" content="Meet the dentists at Edroso Dental Clinic and learn how our patient-focused approach supports long-term oral health.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%A6%B7%3C/text%3E%3C/svg%3E">
+    <title>About — Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col bg-white text-gray-900">
+    <div id="nav"></div>
+    <main class="flex-1 w-full">
+        <!-- Hero -->
+        <section class="border-b border-gray-100 bg-gradient-to-b from-[var(--surface)] to-white px-4 py-12 sm:py-16 lg:py-20">
+            <div class="mx-auto max-w-3xl text-center">
+                <h1 class="text-3xl font-bold tracking-tight text-[var(--secondary)] sm:text-4xl lg:text-5xl">
+                    About Edroso Dental Clinic
+                </h1>
+                <p class="mt-4 text-base text-gray-600 sm:text-lg">
+                    Trusted care for families across our community—where your comfort comes first.
+                </p>
+            </div>
+        </section>
+
+        <!-- Mission -->
+        <section class="px-4 py-12 sm:py-14 lg:py-16">
+            <div class="mx-auto max-w-3xl">
+                <h2 class="text-xl font-semibold text-[var(--secondary)] sm:text-2xl">Our mission</h2>
+                <p class="mt-4 text-sm leading-relaxed text-gray-600 sm:text-base">
+                    At Edroso Dental Clinic, we believe a healthy smile supports overall wellness. Our mission is to deliver gentle, evidence-based dentistry in a calm, welcoming environment. From preventive cleanings to advanced restorative work, we take time to explain every option so you can choose what fits your goals and lifestyle. We invest in modern techniques and strict infection control because you deserve care that is both compassionate and precise—today and for years to come.
+                </p>
+            </div>
+        </section>
+
+        <!-- Team -->
+        <section class="border-t border-gray-100 bg-gray-50/80 px-4 py-12 sm:py-16 lg:py-20">
+            <div class="mx-auto max-w-6xl">
+                <h2 class="text-center text-2xl font-bold text-[var(--secondary)] sm:text-3xl">Meet our dentists</h2>
+                <p class="mx-auto mt-3 max-w-2xl text-center text-sm text-gray-600 sm:text-base">
+                    Experienced clinicians dedicated to your oral health and peace of mind.
+                </p>
+                <div id="aboutDentistsGrid" class="mt-10 grid gap-8 sm:grid-cols-2 lg:mt-12 lg:grid-cols-3 lg:gap-10">
+                    <article class="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm sm:p-8 sm:col-span-2 lg:col-span-3">
+                        <p class="text-sm text-gray-500">Loading dentists...</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </main>
+    <div id="footer"></div>
+    <script src="assets/js/main.js?v=20260503"></script>
+    <script src="assets/js/booking-cta.js?v=20260428"></script>
+    <script>
+    (function () {
+        const grid = document.getElementById('aboutDentistsGrid');
+        if (!grid) return;
+
+        function getInitials(name) {
+            return String(name || '')
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(function (part) { return part.charAt(0).toUpperCase(); })
+                .join('') || 'DR';
+        }
+
+        function dentistCard(dentist) {
+            const article = document.createElement('article');
+            article.className = 'rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm sm:p-8';
+
+            const badge = document.createElement('div');
+            badge.className = 'mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 text-xl font-bold text-[var(--primary)] ring-2 ring-gray-200 overflow-hidden';
+            if (dentist.photo_url) {
+                const img = document.createElement('img');
+                const version = dentist.photo_version ? String(dentist.photo_version) : String(Date.now());
+                let src = String(dentist.photo_url);
+                if (!/^https?:\/\//i.test(src) && !src.startsWith('/')) {
+                    src = '../' + src.replace(/^\.\//, '');
+                }
+                img.src = src + (src.indexOf('?') === -1 ? '?v=' : '&v=') + encodeURIComponent(version);
+                img.alt = (dentist.name || 'Dentist') + ' profile photo';
+                img.className = 'h-full w-full object-cover';
+                img.loading = 'lazy';
+                img.decoding = 'async';
+                badge.appendChild(img);
+            } else {
+                badge.textContent = getInitials(dentist.name);
+            }
+
+            const name = document.createElement('h3');
+            name.className = 'mt-5 text-lg font-semibold text-[var(--secondary)]';
+            name.textContent = dentist.name || 'Dentist';
+
+            const specialization = document.createElement('p');
+            specialization.className = 'mt-1 text-sm font-medium text-[var(--primary)]';
+            specialization.textContent = dentist.specialization || 'General Dentistry';
+
+            article.appendChild(badge);
+            article.appendChild(name);
+            article.appendChild(specialization);
+            return article;
+        }
+
+        function renderFallback(message) {
+            grid.replaceChildren();
+            const article = document.createElement('article');
+            article.className = 'rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm sm:p-8 sm:col-span-2 lg:col-span-3';
+            const p = document.createElement('p');
+            p.className = 'text-sm text-gray-500';
+            p.textContent = message;
+            article.appendChild(p);
+            grid.appendChild(article);
+        }
+
+        async function loadDentists() {
+            try {
+                const res = await fetch('../api/dentists.php?scope=booking', {
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                });
+                const data = await res.json().catch(function () { return []; });
+                if (!res.ok || !Array.isArray(data)) {
+                    throw new Error('Failed to load dentists.');
+                }
+                if (!data.length) {
+                    renderFallback('No active dentists available right now.');
+                    return;
+                }
+                grid.replaceChildren();
+                data.forEach(function (dentist) {
+                    grid.appendChild(dentistCard(dentist));
+                });
+            } catch (err) {
+                renderFallback('Unable to load dentist list right now.');
+            }
+        }
+
+        loadDentists();
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book appointment — Edroso Dental Clinic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/book.css?v=1">
+</head>
+<body class="book-page">
+    <div class="book-summary-bar" id="bookSummaryBar" aria-live="polite">
+        <span>Service:</span> <strong id="mSummaryType">—</strong>
+        <span>|</span> <span>Dentist:</span> <strong id="mSummaryDentist">—</strong>
+        <span>|</span> <span>When:</span> <strong id="mSummaryWhen">—</strong>
+    </div>
+
+    <div class="book-layout">
+        <aside class="book-sidebar" aria-label="Booking summary">
+            <a href="dashboard.html" class="book-sidebar__back" aria-label="Back to dashboard">← Back to dashboard</a>
+            <p class="book-sidebar__brand book-heading">Edroso Dental Clinic</p>
+
+            <div>
+                <p class="book-sidebar__label">Appointment</p>
+                <p id="summaryType" class="book-sidebar__value">Select a service</p>
+            </div>
+
+            <div class="book-sidebar__row">
+                <span class="book-sidebar__row-icon" aria-hidden="true">⏱</span>
+                <div>
+                    <p class="book-sidebar__row-title">Duration</p>
+                    <p id="summaryDuration" class="book-sidebar__row-body">—</p>
+                </div>
+            </div>
+
+            <div class="book-sidebar__row">
+                <span class="book-sidebar__row-icon" aria-hidden="true">🦷</span>
+                <div>
+                    <p class="book-sidebar__row-title">Dentist</p>
+                    <p id="summaryDentist" class="book-sidebar__row-body">Select a dentist</p>
+                </div>
+            </div>
+
+            <div class="book-sidebar__row">
+                <div>
+                    <p class="book-sidebar__row-title">When</p>
+                    <p id="summaryWhen" class="book-sidebar__row-body">Select date &amp; time</p>
+                    <p id="summaryTimeDetail" class="book-sidebar__row-body hidden" style="margin-top:0.25rem;font-size:0.8rem;opacity:0.9;"></p>
+                </div>
+            </div>
+
+            <p class="book-sidebar__tz">Timezone: Asia/Manila (GMT+8)</p>
+        </aside>
+
+        <main class="book-main">
+            <div class="book-main__inner">
+                <ol class="stepper" id="bookingStepper" aria-label="Booking progress">
+                    <li class="stepper__item is-active" data-stepper-index="1">
+                        <div class="stepper__dot-wrap"><span class="stepper__dot">1</span></div>
+                        <span class="stepper__label">Service</span>
+                    </li>
+                    <li class="stepper__item" data-stepper-index="2">
+                        <div class="stepper__dot-wrap"><span class="stepper__dot">2</span></div>
+                        <span class="stepper__label">Dentist</span>
+                    </li>
+                    <li class="stepper__item" data-stepper-index="3">
+                        <div class="stepper__dot-wrap"><span class="stepper__dot">3</span></div>
+                        <span class="stepper__label">Date &amp; Time</span>
+                    </li>
+                    <li class="stepper__item" data-stepper-index="4">
+                        <div class="stepper__dot-wrap"><span class="stepper__dot">4</span></div>
+                        <span class="stepper__label">Your Details</span>
+                    </li>
+                    <li class="stepper__item" data-stepper-index="5">
+                        <div class="stepper__dot-wrap"><span class="stepper__dot">5</span></div>
+                        <span class="stepper__label">Health Info</span>
+                    </li>
+                    <li class="stepper__item" data-stepper-index="6">
+                        <div class="stepper__dot-wrap"><span class="stepper__dot">6</span></div>
+                        <span class="stepper__label">Confirm &amp; Pay</span>
+                    </li>
+                </ol>
+
+                <form id="bookingForm" method="post" action="book.html" novalidate>
+                    <!-- Step 1: Service -->
+                    <section class="wizard-step is-active book-card" id="wizardStep1" data-wizard-step="1" aria-labelledby="wiz1-title">
+                        <h2 id="wiz1-title" class="wizard-step__title book-heading">Choose a service</h2>
+                        <p class="wizard-step__hint">Select the treatment or visit type that best matches your needs.</p>
+                        <label class="visually-hidden" for="reason">Reason for visit</label>
+                        <select id="reason" name="reason" required class="visually-hidden" tabindex="-1" aria-hidden="true">
+                            <option value="">Select a service...</option>
+                        </select>
+                        <div id="serviceCards" class="pick-grid" role="group" aria-labelledby="wiz1-title"></div>
+                    </section>
+
+                    <!-- Step 2: Dentist -->
+                    <section class="wizard-step book-card" id="wizardStep2" data-wizard-step="2" aria-labelledby="wiz2-title">
+                        <h2 id="wiz2-title" class="wizard-step__title book-heading">Choose your dentist</h2>
+                        <p class="wizard-step__hint">Pick who you would like to see for this visit.</p>
+                        <label class="visually-hidden" for="dentist">Preferred dentist</label>
+                        <select id="dentist" name="dentist" required class="visually-hidden" tabindex="-1" aria-hidden="true">
+                            <option value="">Select a dentist...</option>
+                        </select>
+                        <div id="dentistCards" class="pick-grid" role="group" aria-labelledby="wiz2-title"></div>
+                    </section>
+
+                    <!-- Step 3: Date & time -->
+                    <section class="wizard-step book-card" id="wizardStep3" data-wizard-step="3" aria-labelledby="wiz3-title">
+                        <h2 id="wiz3-title" class="wizard-step__title book-heading">Date &amp; time</h2>
+                        <p class="wizard-step__hint">Choose an available day, then pick a 30-minute slot.</p>
+                        <div class="cal-datetime-grid">
+                            <div>
+                                <div class="cal-toolbar">
+                                    <button type="button" id="calPrev" class="cal-nav" aria-label="Previous month">◀</button>
+                                    <h3 id="calTitle" class="book-heading" style="font-size:1rem;margin:0;"></h3>
+                                    <button type="button" id="calNext" class="cal-nav" aria-label="Next month">▶</button>
+                                </div>
+                                <div class="cal-weekdays" aria-hidden="true">
+                                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                                </div>
+                                <div id="calGrid"></div>
+                            </div>
+                            <div class="cal-slot-wrap">
+                                <h4 class="form-label" style="margin-bottom:0.5rem;">Available times</h4>
+                                <p id="slotHint">Select a date to load slots.</p>
+                                <div id="slotList"></div>
+                                <div id="slotSelectRow" class="hidden">
+                                    <span id="slotSelectedLabel" class="form-label" style="margin:0;text-transform:none;letter-spacing:0;"></span>
+                                    <button type="button" id="btnConfirmSlot" class="btn btn--confirm-slot">Confirm time</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Step 4: Your details -->
+                    <section class="wizard-step book-card" id="wizardStep4" data-wizard-step="4" aria-labelledby="wiz4-title">
+                        <h2 id="wiz4-title" class="wizard-step__title book-heading">Your details</h2>
+                        <p class="wizard-step__hint">We will use this information for your patient record.</p>
+                        <div class="form-stack">
+                            <div class="form-grid-2">
+                                <div>
+                                    <label class="form-label" for="first_name">First name <span class="req">*</span></label>
+                                    <input id="first_name" name="first_name" type="text" required class="form-input" autocomplete="given-name">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="last_name">Last name <span class="req">*</span></label>
+                                    <input id="last_name" name="last_name" type="text" required class="form-input" autocomplete="family-name">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="email">Email <span class="req">*</span></label>
+                                    <input id="email" name="email" type="email" required class="form-input" autocomplete="email">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="phone">Mobile <span class="req">*</span></label>
+                                    <input id="phone" name="phone" type="text" required placeholder="+63 9XX XXX XXXX" class="form-input" autocomplete="tel">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="age">Age <span class="req">*</span></label>
+                                    <input id="age" name="age" type="number" min="1" max="120" required placeholder="From date of birth" class="form-input" readonly aria-readonly="true">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="dob">Date of birth</label>
+                                    <input id="dob" name="dob" type="date" readonly aria-readonly="true" class="form-input">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label" for="street">Street address <span class="req">*</span></label>
+                                <input id="street" name="street" type="text" required class="form-input" autocomplete="street-address">
+                            </div>
+                            <div class="form-grid-2">
+                                <div>
+                                    <label class="form-label" for="city">City</label>
+                                    <input id="city" name="city" type="text" value="Davao City" class="form-input" autocomplete="address-level2">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="state">State / province</label>
+                                    <input id="state" name="state" type="text" value="Davao del Sur" class="form-input" autocomplete="address-level1">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="country">Country</label>
+                                    <input id="country" name="country" type="text" value="Philippines" readonly aria-readonly="true" class="form-input">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="postal">Postal code</label>
+                                    <input id="postal" name="postal" type="text" class="form-input" autocomplete="postal-code">
+                                </div>
+                            </div>
+                            <div>
+                                <p class="form-label">Are you a returning patient? <span class="req">*</span></p>
+                                <div class="switch-pair" role="group" aria-label="Returning patient">
+                                    <label><input type="radio" name="returning" value="new" checked><span>New</span></label>
+                                    <label><input type="radio" name="returning" value="returning"><span>Returning</span></label>
+                                </div>
+                            </div>
+                            <div id="prevDentistWrap" class="hidden">
+                                <label class="form-label" for="previous_dentist">Previous dentist</label>
+                                <input id="previous_dentist" type="text" class="form-input">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Step 5: Health -->
+                    <section class="wizard-step book-card" id="wizardStep5" data-wizard-step="5" aria-labelledby="wiz5-title">
+                        <h2 id="wiz5-title" class="wizard-step__title book-heading">Health information</h2>
+                        <p class="wizard-step__hint">Help us prepare for your visit safely.</p>
+                        <div class="form-stack">
+                            <div>
+                                <p class="form-label">Existing dental concerns <span class="req">*</span></p>
+                                <div class="pill-toggle-group">
+                                    <label class="pill-toggle"><input type="checkbox" name="concern" value="Tooth Pain"><span>Tooth pain</span></label>
+                                    <label class="pill-toggle"><input type="checkbox" name="concern" value="Gum Bleeding"><span>Gum bleeding</span></label>
+                                    <label class="pill-toggle"><input type="checkbox" name="concern" value="Bad Breath"><span>Bad breath</span></label>
+                                    <label class="pill-toggle"><input type="checkbox" name="concern" value="Jaw Pain"><span>Jaw pain</span></label>
+                                    <label class="pill-toggle"><input type="checkbox" name="concern" value="Others"><span>Others</span></label>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="form-label">Ongoing dental treatments</p>
+                                <div class="switch-pair" role="group">
+                                    <label><input type="radio" name="ongoing" value="yes"><span>Yes</span></label>
+                                    <label><input type="radio" name="ongoing" value="no" checked><span>No</span></label>
+                                </div>
+                                <div id="ongoingDetailsWrap" class="hidden" style="margin-top:0.75rem;">
+                                    <label class="form-label" for="ongoing_details">Details</label>
+                                    <textarea id="ongoing_details" rows="3" class="form-textarea"></textarea>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="form-label">Allergies to medications or anesthesia?</p>
+                                <div class="switch-pair" role="group">
+                                    <label><input type="radio" name="allergies" value="yes"><span>Yes</span></label>
+                                    <label><input type="radio" name="allergies" value="no" checked><span>No</span></label>
+                                </div>
+                                <div id="allergiesWrap" class="hidden" style="margin-top:0.75rem;">
+                                    <label class="form-label" for="allergies_specify">Please specify</label>
+                                    <input id="allergies_specify" type="text" class="form-input">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label" for="medical_conditions">Medical conditions <span class="req">*</span></label>
+                                <textarea id="medical_conditions" name="medical_conditions" required rows="4" class="form-textarea" placeholder="e.g. diabetes, hypertension, pregnancy"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Step 6: Confirm & pay -->
+                    <section class="wizard-step book-card" id="wizardStep6" data-wizard-step="6" aria-labelledby="wiz6-title">
+                        <h2 id="wiz6-title" class="wizard-step__title book-heading">Confirm &amp; pay</h2>
+                        <p class="wizard-step__hint">Review everything, then confirm your appointment.</p>
+
+                        <div class="receipt" id="confirmReceipt" style="margin-bottom:1.25rem;">
+                            <div class="receipt__row"><span class="receipt__k">Service</span><span class="receipt__v" id="rcptService">—</span></div>
+                            <div class="receipt__row"><span class="receipt__k">Dentist</span><span class="receipt__v" id="rcptDentist">—</span></div>
+                            <div class="receipt__row"><span class="receipt__k">Date</span><span class="receipt__v" id="rcptDate">—</span></div>
+                            <div class="receipt__row"><span class="receipt__k">Time</span><span class="receipt__v" id="rcptTime">—</span></div>
+                            <div class="receipt__row"><span class="receipt__k">Payment method</span><span class="receipt__v" id="rcptPayment">—</span></div>
+                        </div>
+
+                        <div class="form-stack">
+                            <div>
+                                <label class="form-label" for="payment_method">Preferred payment method <span class="req">*</span></label>
+                                <select id="payment_method" name="payment_method" required class="form-select" style="min-height:48px;">
+                                    <option value="">Select…</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="special_requests">Special requests</label>
+                                <textarea id="special_requests" rows="3" class="form-textarea"></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label" for="how_heard">How did you hear about us?</label>
+                                <select id="how_heard" class="form-select" style="min-height:48px;">
+                                    <option value="">Select…</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="deposit-box" style="margin-top:1.25rem;">
+                            To confirm your slot, send <strong>₱200</strong> to GCash/Maya: <strong>09XX-XXX-XXXX</strong><br>
+                            Account name: <strong>Edroso Dental Clinic</strong><br>
+                            Then enter your reference number below.
+                        </div>
+
+                        <div style="margin-top:1rem;">
+                            <label class="form-label" for="payment_reference">Payment reference number <span class="req">*</span></label>
+                            <input id="payment_reference" name="payment_reference" type="text" class="form-input" placeholder="e.g. GCash ref #" autocomplete="off">
+                        </div>
+
+                        <label class="consent-row" style="margin-top:1.25rem;">
+                            <input id="consent" type="checkbox" required>
+                            <span>I confirm that the information provided is accurate and consent to Edroso Dental processing my personal data for appointment scheduling.</span>
+                        </label>
+
+                        <p id="submitError" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:0.65rem 1rem;font-size:0.875rem;" role="alert"></p>
+                        <p id="fieldErrors" class="hidden" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:0.65rem 1rem;font-size:0.875rem;" role="alert"></p>
+                    </section>
+
+                    <div class="wizard-nav" id="wizardNavRow">
+                        <button type="button" id="wizBack" class="btn btn--ghost hidden">Back</button>
+                        <div class="wizard-nav__actions">
+                            <button type="button" id="wizNext" class="btn btn--primary">Next</button>
+                            <button type="submit" id="btnSubmit" class="btn btn--primary btn--block hidden">Schedule appointment</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/main.js?v=20260503"></script>
+    <script src="assets/js/book.js?v=20260430e"></script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'}}}}</script>
+    <style>
+        .cal-cell{min-height:88px;transition:background .15s;cursor:pointer;}
+        .cal-cell:hover{background:rgba(34,204,178,.06);}
+        .cal-cell.today{outline:2px solid #22ccb2;outline-offset:-2px;background:rgba(34,204,178,.04);}
+        .cal-cell.offmonth{background:#fafafa;}
+        .appt-chip{font-size:10px;line-height:1.3;padding:1px 5px;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:2px;}
+    </style>
+</head>
+<body class="font-sans bg-neutral min-h-screen flex" style="font-family:'Inter',sans-serif">
+<div id="sidebarMount"></div>
+<div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+    <div id="headerMount"></div>
+    <main class="pt-20 px-6 pb-8">
+
+        <!-- Action bar -->
+        <div class="flex flex-wrap justify-between items-center mb-5 gap-3">
+            <div class="flex items-center gap-3">
+                <button id="newApptBtn" class="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl flex items-center gap-2 text-sm font-medium transition-colors shadow-sm">
+                    <i class="fas fa-plus"></i> New Appointment
+                </button>
+                <select id="dentistFilter" class="pl-4 pr-8 py-2.5 rounded-xl border border-neutral-dark bg-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer">
+                    <option value="">All Dentists</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="todayBtn" class="px-4 py-2.5 bg-white border border-neutral-dark rounded-xl text-sm font-medium text-secondary hover:bg-neutral-dark transition-colors">Today</button>
+                <button id="weekBtn" type="button" class="px-4 py-2.5 bg-white border border-neutral-dark rounded-xl text-sm font-medium text-secondary hover:bg-neutral-dark transition-colors">Week</button>
+                <div class="flex items-center gap-1">
+                    <button id="prevMonth" class="w-9 h-9 bg-white border border-neutral-dark rounded-xl flex items-center justify-center hover:bg-neutral-dark transition-colors">
+                        <i class="fas fa-chevron-left text-xs text-secondary"></i>
+                    </button>
+                    <span id="monthDisplay" class="px-4 py-2 bg-white border border-neutral-dark rounded-xl text-sm font-semibold text-secondary min-w-[140px] text-center"></span>
+                    <button id="nextMonth" class="w-9 h-9 bg-white border border-neutral-dark rounded-xl flex items-center justify-center hover:bg-neutral-dark transition-colors">
+                        <i class="fas fa-chevron-right text-xs text-secondary"></i>
+                    </button>
+                </div>
+                <div class="flex rounded-xl border border-neutral-dark overflow-hidden">
+                    <button id="calViewBtn" class="px-3.5 py-2 text-sm transition-colors" title="Calendar View"><i class="fas fa-calendar-alt"></i></button>
+                    <button id="listViewBtn" class="px-3.5 py-2 text-sm bg-primary text-white" title="List View"><i class="fas fa-list"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stat strip -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+            <div class="bg-white rounded-2xl p-4 shadow-sm stat-card text-center">
+                <p class="text-xs text-gray-400 mb-1">Today</p>
+                <p class="text-2xl font-bold text-secondary" id="statToday">—</p>
+            </div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm stat-card text-center">
+                <p class="text-xs text-gray-400 mb-1">Upcoming</p>
+                <p class="text-2xl font-bold text-blue-500" id="statUpcoming">—</p>
+            </div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm stat-card text-center">
+                <p class="text-xs text-gray-400 mb-1">Completed</p>
+                <p class="text-2xl font-bold text-green-500" id="statCompleted">—</p>
+            </div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm stat-card text-center">
+                <p class="text-xs text-gray-400 mb-1">Cancelled</p>
+                <p class="text-2xl font-bold text-red-400" id="statCancelled">—</p>
+            </div>
+        </div>
+
+        <!-- Calendar view -->
+        <div id="calendarView" class="bg-white rounded-2xl p-5 shadow-sm mb-5 hidden">
+            <div class="grid grid-cols-7">
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Sun</div>
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Mon</div>
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Tue</div>
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Wed</div>
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Thu</div>
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Fri</div>
+                <div class="text-center pb-2 text-xs font-semibold text-gray-400 uppercase">Sat</div>
+            </div>
+            <div class="grid grid-cols-7 border-t border-l border-neutral-dark" id="calGrid"></div>
+        </div>
+
+        <!-- List view -->
+        <div id="listView" class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="flex flex-wrap justify-between items-center px-5 py-4 border-b border-neutral-dark gap-3">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-semibold text-secondary" id="listTitle">Today's Appointments</h3>
+                    <span class="px-2.5 py-0.5 bg-primary/15 text-primary text-xs rounded-full font-semibold" id="listBadge"></span>
+                </div>
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search appointments…"
+                        class="pl-9 pr-4 py-2 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-56">
+                    <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 text-xs"></i>
+                </div>
+            </div>
+            <div id="dayListWrap">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-neutral-dark bg-neutral/40">
+                                <th class="px-5 py-3.5">Time</th>
+                                <th class="px-5 py-3.5">Patient</th>
+                                <th class="px-5 py-3.5">Procedure</th>
+                                <th class="px-5 py-3.5">Dentist</th>
+                                <th class="px-5 py-3.5">Status</th>
+                                <th class="px-5 py-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apptTable" class="divide-y divide-neutral-dark">
+                            <tr><td colspan="6" class="px-5 py-10 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-primary text-xl mb-2 block"></i>Loading…
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="listFilterTabs" class="flex flex-wrap gap-2 px-5 py-3 border-t border-neutral-dark bg-neutral/30">
+                    <button type="button" id="tabFilterToday" data-filter="today" class="list-filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-[#22ccb2] text-white shadow-sm">
+                        Today <span id="tabCountToday" class="ml-0.5 font-semibold">(0)</span>
+                    </button>
+                    <button type="button" id="tabFilterUpcoming" data-filter="upcoming" class="list-filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 border-primary text-primary bg-white hover:bg-primary/5">
+                        Upcoming <span id="tabCountUpcoming" class="ml-0.5 font-semibold">(0)</span>
+                    </button>
+                    <button type="button" id="tabFilterCompleted" data-filter="completed" class="list-filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 border-primary text-primary bg-white hover:bg-primary/5">
+                        Completed <span id="tabCountCompleted" class="ml-0.5 font-semibold">(0)</span>
+                    </button>
+                    <button type="button" id="tabFilterCancelled" data-filter="cancelled" class="list-filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 border-primary text-primary bg-white hover:bg-primary/5">
+                        Cancelled <span id="tabCountCancelled" class="ml-0.5 font-semibold">(0)</span>
+                    </button>
+                </div>
+            </div>
+            <div id="weekListWrap" class="hidden px-5 py-4 overflow-x-auto"></div>
+        </div>
+    </main>
+</div>
+
+<!-- New / Edit Appointment Modal -->
+<div id="apptModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-2xl mx-4 modal-box max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="font-bold text-secondary text-xl" id="apptModalTitle">New Appointment</h3>
+            <button onclick="closeModal('apptModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-dark text-gray-400 hover:text-secondary"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="apptForm">
+            <input type="hidden" id="apptId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Patient <span class="text-red-400">*</span></label>
+                    <div id="patientSelectMount" class="relative" data-hidden-id="fPatient" data-placeholder="Search patient…"></div>
+                    <input type="hidden" id="fPatient" value="">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Dentist <span class="text-red-400">*</span></label>
+                    <div id="dentistSelectMount" class="relative" data-hidden-id="fDentist" data-placeholder="Search dentist…"></div>
+                    <input type="hidden" id="fDentist" value="">
+                    <div id="dentistBookedSlots" class="hidden mt-3 p-3 rounded-xl bg-neutral/60 border border-neutral-dark text-xs">
+                        <p class="font-semibold text-secondary mb-2">Already booked (scheduled)</p>
+                        <ul id="dentistBookedSlotsList" class="space-y-1 text-gray-600 max-h-36 overflow-y-auto"></ul>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Procedure <span class="text-red-400">*</span></label>
+                    <div id="procedureSelectMount" class="relative" data-hidden-id="fProcedure" data-placeholder="Search procedure…"></div>
+                    <input type="hidden" id="fProcedure" value="">
+                    <input type="hidden" id="fProcType" value="other">
+                    <input type="hidden" id="fRoom" value="">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Date <span class="text-red-400">*</span></label>
+                    <input type="date" id="fDate" required class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Time <span class="text-red-400">*</span></label>
+                    <select id="fTime" required class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none bg-white">
+                        <option value="">Select dentist and date first…</option>
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Only open slots for this dentist are listed (from weekly schedule).</p>
+                    <p id="adminSlotSuggest" class="text-xs text-gray-600 mt-1 hidden" role="status"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Duration (min)</label>
+                    <input type="number" id="fDuration" value="30" min="15" max="240" step="15" class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
+                    <select id="fStatus" class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none">
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Notes</label>
+                    <textarea id="fNotes" rows="3" placeholder="Additional notes or patient instructions…"
+                        class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"></textarea>
+                </div>
+            </div>
+            <p id="apptConflictError" class="hidden text-sm text-red-600 px-0.5 mb-2" role="alert"></p>
+            <div class="flex justify-end gap-3 pt-2 border-t border-neutral-dark">
+                <button type="button" onclick="closeModal('apptModal')" class="px-5 py-2.5 bg-neutral-dark text-secondary rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                <button type="submit" id="saveApptBtn" class="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
+                    <i class="fas fa-save mr-1.5"></i> Save Appointment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-lg mx-4 modal-box">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="font-bold text-secondary text-xl">Appointment Details</h3>
+            <button onclick="closeModal('detailModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-dark text-gray-400 hover:text-secondary"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="detailContent" class="mb-5"></div>
+        <div class="mb-5 p-3 bg-neutral rounded-xl">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Update Status</p>
+            <div class="flex flex-wrap gap-2" id="statusButtons"></div>
+        </div>
+        <div class="flex justify-between pt-2 border-t border-neutral-dark">
+            <button id="detailDelete" class="px-4 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-sm font-medium transition-colors">
+                <i class="fas fa-trash mr-1.5"></i>Delete
+            </button>
+            <div class="flex gap-3">
+                <button onclick="closeModal('detailModal')" class="px-4 py-2 bg-neutral-dark text-secondary rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">Close</button>
+                <button id="detailEdit" class="px-4 py-2 bg-accent hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition-colors">
+                    <i class="fas fa-edit mr-1.5"></i>Edit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../assets/js/layout.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+document.getElementById('sidebarMount').innerHTML = getSidebarHTML('appointments');
+document.getElementById('headerMount').innerHTML  = getHeaderHTML('Appointments');
+</script>
+<script src="../assets/js/appointments.js?v=20260503"></script>
+</body>
+</html>

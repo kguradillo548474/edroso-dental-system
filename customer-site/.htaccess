@@ -1,0 +1,4 @@
+# Public pages (register, login, portal) — explicit allow for Apache 2.4+
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>

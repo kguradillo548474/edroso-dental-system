@@ -1,0 +1,28 @@
+Options -Indexes
+
+# PHP settings
+php_value session.cookie_httponly 1
+php_value session.use_strict_mode 1
+
+# Protect includes directory - handled by includes/.htaccess
+
+# Allow API and HTML files
+<FilesMatch "\.(html|php|js|css|png|jpg|ico|svg)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType image/png "access plus 1 month"
+</IfModule>

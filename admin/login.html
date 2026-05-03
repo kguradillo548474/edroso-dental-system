@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'},fontFamily:{inter:['Inter','sans-serif']}}}}</script>
+</head>
+<body class="font-inter bg-neutral min-h-screen flex justify-center items-center p-4">
+    <div class="flex bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl">
+        <!-- Form -->
+        <div class="w-full lg:w-1/2 p-10">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                    Admin Login
+                    <span class="ml-2 bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-medium align-middle">Staff Only</span>
+                </h1>
+            </div>
+
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="username" placeholder="Enter your username"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="password" id="password" placeholder="Enter your password"
+                            class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition" required>
+                        <button type="button" id="togglePw" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center text-sm text-gray-700 cursor-pointer">
+                        <input type="checkbox" id="remember" class="h-4 w-4 text-primary border-gray-300 rounded mr-2">
+                        Remember me
+                    </label>
+                    <a href="#" class="text-sm text-gray-500 hover:text-primary hover:underline">Forgot Password?</a>
+                </div>
+                <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm flex items-center">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span id="errorMsg"></span>
+                </div>
+                <button type="submit" id="loginBtn"
+                    class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2">
+                    <span id="btnText">Login to Dashboard</span>
+                    <i class="fas fa-arrow-right" id="btnIcon"></i>
+                    <i class="fas fa-spinner fa-spin hidden" id="btnSpinner"></i>
+                </button>
+            </form>
+
+            <p class="mt-6 text-center text-xs text-gray-400">
+                Demo: username <strong>admin</strong> / password <strong>password</strong>
+            </p>
+        </div>
+
+        <!-- Brand Panel -->
+        <div class="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-10">
+            <div class="text-center text-white w-full">
+                <img src="Edroso logo.png" alt="Edroso Dental Logo" class="mx-auto w-55 h-auto">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let csrfToken = '';
+        async function loadCsrfToken() {
+            const res = await fetch('../api/auth.php?action=csrf', { credentials: 'same-origin' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.csrf_token) throw new Error(data.error || 'Failed to load security token.');
+            csrfToken = String(data.csrf_token);
+        }
+
+        // Toggle password visibility
+        document.getElementById('togglePw').addEventListener('click', function() {
+            const pw = document.getElementById('password');
+            const icon = this.querySelector('i');
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+            icon.className = pw.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+
+        // Remember me
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('savedUsername');
+            if (saved) {
+                document.getElementById('username').value = saved;
+                document.getElementById('remember').checked = true;
+            }
+            loadCsrfToken().catch(function (err) {
+                const errorBox = document.getElementById('errorBox');
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.textContent = err.message || 'Failed to initialize login security.';
+                errorBox.classList.remove('hidden');
+            });
+        });
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorBox = document.getElementById('errorBox');
+            const errorMsg = document.getElementById('errorMsg');
+
+            // UI: loading state
+            document.getElementById('loginBtn').disabled = true;
+            document.getElementById('btnIcon').classList.add('hidden');
+            document.getElementById('btnSpinner').classList.remove('hidden');
+            errorBox.classList.add('hidden');
+
+            try {
+                const res = await fetch('../api/auth.php?action=login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ username, password, csrf_token: csrfToken })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    if (document.getElementById('remember').checked) {
+                        localStorage.setItem('savedUsername', username);
+                    } else {
+                        localStorage.removeItem('savedUsername');
+                    }
+                    window.location.href = 'dashboard.html';
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorBox.classList.remove('hidden');
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('btnIcon').classList.remove('hidden');
+                document.getElementById('btnSpinner').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
