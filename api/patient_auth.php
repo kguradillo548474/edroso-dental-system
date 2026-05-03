@@ -6,6 +6,68 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/validation.php';
 
+/** Normalize security-answer input for hashing / verification (case-insensitive, trimmed). */
+function normalize_portal_recovery_answer(string $answer): string
+{
+    return strtolower(trim(preg_replace('/\s+/', ' ', $answer)));
+}
+
+/**
+ * Add recovery columns on legacy portal_users tables (no-op if already present).
+ */
+function ensure_portal_recovery_columns(mysqli $db): bool
+{
+    static $migrated = false;
+    if ($migrated) {
+        return true;
+    }
+    $cols = [
+        'recovery_question' => 'VARCHAR(255) NULL',
+        'recovery_answer_hash' => 'VARCHAR(255) NULL',
+    ];
+    foreach ($cols as $name => $definition) {
+        $esc = $db->real_escape_string($name);
+        $chk = $db->query("SHOW COLUMNS FROM portal_users LIKE '{$esc}'");
+        if ($chk && $chk->num_rows === 0) {
+            $q = 'ALTER TABLE portal_users ADD COLUMN `' . str_replace('`', '``', $name) . '` ' . $definition;
+            if (!$db->query($q)) {
+                return false;
+            }
+        }
+    }
+    $migrated = true;
+
+    return true;
+}
+
+function recovery_reset_rate_key(string $email): string
+{
+    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+    return hash('sha256', strtolower(trim($email)) . "\0" . $ip);
+}
+
+function recovery_reset_rate_allowed(string $key): bool
+{
+    $until = (int) ($_SESSION['recovery_block_until'][$key] ?? 0);
+
+    return $until < time();
+}
+
+function recovery_reset_rate_fail(string $key): void
+{
+    $_SESSION['recovery_fail_count'][$key] = (int) ($_SESSION['recovery_fail_count'][$key] ?? 0) + 1;
+    if ((int) $_SESSION['recovery_fail_count'][$key] >= 6) {
+        $_SESSION['recovery_block_until'][$key] = time() + 900;
+        $_SESSION['recovery_fail_count'][$key] = 0;
+    }
+}
+
+function recovery_reset_rate_clear(string $key): void
+{
+    unset($_SESSION['recovery_fail_count'][$key], $_SESSION['recovery_block_until'][$key]);
+}
+
 /**
  * Create portal_users if missing (avoids silent INSERT failures on fresh DBs).
  */
@@ -13,7 +75,7 @@ function ensure_portal_users_table(mysqli $db): bool
 {
     static $done = false;
     if ($done) {
-        return true;
+        return ensure_portal_recovery_columns($db);
     }
     $sql = 'CREATE TABLE IF NOT EXISTS portal_users (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -22,6 +84,8 @@ function ensure_portal_users_table(mysqli $db): bool
       phone VARCHAR(20) NOT NULL,
       dob DATE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
+      recovery_question VARCHAR(255) NULL,
+      recovery_answer_hash VARCHAR(255) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
     if (!$db->query($sql)) {
@@ -29,7 +93,7 @@ function ensure_portal_users_table(mysqli $db): bool
     }
     $done = true;
 
-    return true;
+    return ensure_portal_recovery_columns($db);
 }
 
 /**
@@ -91,7 +155,7 @@ function portal_full_name_to_patient_names(string $full_name): array
 }
 
 /**
- * @return array{id:int,name:string,email:string,phone:string,dob:string}|null
+ * @return array{id:int,name:string,email:string,phone:string,dob:string,has_recovery_question:bool,recovery_question:?string}|null
  */
 function portal_me_payload(): ?array
 {
@@ -103,11 +167,12 @@ function portal_me_payload(): ?array
     $email = '';
     $phone = '';
     $dob = '';
+    $recQ = '';
     $db = getDB();
     if (!ensure_portal_users_table($db)) {
         $stmt = null;
     } else {
-        $stmt = $db->prepare('SELECT full_name, email, phone, dob FROM portal_users WHERE id = ? LIMIT 1');
+        $stmt = $db->prepare('SELECT full_name, email, phone, dob, recovery_question FROM portal_users WHERE id = ? LIMIT 1');
     }
     if ($stmt) {
         $stmt->bind_param('i', $uid);
@@ -116,22 +181,28 @@ function portal_me_payload(): ?array
             $em = '';
             $ph = '';
             $dbDob = '';
-            $stmt->bind_result($fn, $em, $ph, $dbDob);
+            $rq = '';
+            $stmt->bind_result($fn, $em, $ph, $dbDob, $rq);
             if ($stmt->fetch()) {
                 $name  = (string) $fn;
                 $email = (string) $em;
                 $phone = (string) $ph;
                 $dob = (string) $dbDob;
+                $recQ = (string) $rq;
             }
         }
         $stmt->close();
     }
+    $hasRec = $recQ !== '';
+
     return [
-        'id'    => $uid,
-        'name'  => $name,
-        'email' => $email,
-        'phone' => $phone,
-        'dob'   => $dob,
+        'id'                     => $uid,
+        'name'                   => $name,
+        'email'                  => $email,
+        'phone'                  => $phone,
+        'dob'                    => $dob,
+        'has_recovery_question'  => $hasRec,
+        'recovery_question'      => $hasRec ? $recQ : null,
     ];
 }
 
@@ -209,6 +280,21 @@ if ($action === 'register') {
         respond(['error' => 'Password must be at least 8 characters.'], 400);
     }
 
+    $recoveryQuestion = trim((string) ($body['recovery_question'] ?? ''));
+    $recoveryAnswer   = trim((string) ($body['recovery_answer'] ?? ''));
+    if (($recoveryQuestion !== '') xor ($recoveryAnswer !== '')) {
+        respond(['error' => 'Security question and answer must both be filled, or both left empty.'], 400);
+    }
+    if ($recoveryQuestion !== '') {
+        if (strlen($recoveryQuestion) < 3 || strlen($recoveryQuestion) > 255) {
+            respond(['error' => 'Security question must be between 3 and 255 characters.'], 400);
+        }
+        $normAns = normalize_portal_recovery_answer($recoveryAnswer);
+        if (strlen($normAns) < 2) {
+            respond(['error' => 'Security answer is too short.'], 400);
+        }
+    }
+
     $db = getDB();
     if (!ensure_portal_users_table($db)) {
         respond(['error' => 'Database setup failed: ' . $db->error], 500);
@@ -238,13 +324,20 @@ if ($action === 'register') {
     $password = '';
     unset($body['password']);
 
+    $recQBind = null;
+    $recHBind = null;
+    if ($recoveryQuestion !== '') {
+        $recQBind = $recoveryQuestion;
+        $recHBind = password_hash(normalize_portal_recovery_answer($recoveryAnswer), PASSWORD_DEFAULT);
+    }
+
     // Portal account must succeed on its own. Patient-row mirror is best-effort so a
     // patients-table schema mismatch never rolls back the portal user (that looked like "no account").
-    $ins = $db->prepare('INSERT INTO portal_users (full_name, email, phone, dob, password_hash) VALUES (?, ?, ?, ?, ?)');
+    $ins = $db->prepare('INSERT INTO portal_users (full_name, email, phone, dob, password_hash, recovery_question, recovery_answer_hash) VALUES (?, ?, ?, ?, ?, ?, ?)');
     if (!$ins) {
         respond(['error' => 'Database error: ' . $db->error], 500);
     }
-    $ins->bind_param('sssss', $full_name, $email, $phone, $dob, $hash);
+    $ins->bind_param('sssssss', $full_name, $email, $phone, $dob, $hash, $recQBind, $recHBind);
     if (!$ins->execute()) {
         $errno = (int) $ins->errno;
         $msg   = (string) $ins->error;
@@ -464,6 +557,87 @@ if ($action === 'change_password') {
     respond(['success' => true]);
 }
 
+if ($action === 'update_recovery') {
+    if (empty($_SESSION['portal_user_id'])) {
+        respond(['error' => 'Unauthorized'], 401);
+    }
+    $uid = (int) $_SESSION['portal_user_id'];
+    $current = (string) ($body['current_password'] ?? '');
+    $rq = trim((string) ($body['recovery_question'] ?? ''));
+    $ra = trim((string) ($body['recovery_answer'] ?? ''));
+    if ($current === '') {
+        respond(['error' => 'Current password is required.', 'field' => 'current_password'], 422);
+    }
+    if ($rq === '' || $ra === '') {
+        respond(['error' => 'Security question and answer are required.', 'field' => 'recovery_question'], 422);
+    }
+    if (strlen($rq) < 3 || strlen($rq) > 255) {
+        respond(['error' => 'Security question must be between 3 and 255 characters.', 'field' => 'recovery_question'], 422);
+    }
+    $normAns = normalize_portal_recovery_answer($ra);
+    if (strlen($normAns) < 2) {
+        respond(['error' => 'Security answer is too short.', 'field' => 'recovery_answer'], 422);
+    }
+    $db = getDB();
+    if (!ensure_portal_users_table($db)) {
+        respond(['error' => 'Database error'], 500);
+    }
+    $stmt = $db->prepare('SELECT password_hash FROM portal_users WHERE id = ? LIMIT 1');
+    if (!$stmt) {
+        respond(['error' => 'Database error'], 500);
+    }
+    $stmt->bind_param('i', $uid);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row || !password_verify($current, (string) ($row['password_hash'] ?? ''))) {
+        respond(['error' => 'Current password is incorrect.', 'field' => 'current_password'], 422);
+    }
+    $ansHash = password_hash($normAns, PASSWORD_DEFAULT);
+    $up = $db->prepare('UPDATE portal_users SET recovery_question = ?, recovery_answer_hash = ? WHERE id = ?');
+    if (!$up) {
+        respond(['error' => 'Database error'], 500);
+    }
+    $up->bind_param('ssi', $rq, $ansHash, $uid);
+    if (!$up->execute()) {
+        respond(['error' => 'Could not save security question.'], 500);
+    }
+    $up->close();
+    respond(['success' => true]);
+}
+
+if ($action === 'recovery_challenge') {
+    $email = trim((string) ($body['email'] ?? ''));
+    if ($email === '' || validate_portal_email($email) !== null) {
+        respond(['success' => false, 'message' => 'Enter a valid email address.'], 400);
+    }
+    $db = getDB();
+    if (!ensure_portal_users_table($db)) {
+        respond(['success' => false, 'message' => 'Server error. Try again later.'], 500);
+    }
+    $stmt = $db->prepare('SELECT recovery_question, recovery_answer_hash FROM portal_users WHERE email = ? LIMIT 1');
+    if (!$stmt) {
+        respond(['success' => false, 'message' => 'Server error. Try again later.'], 500);
+    }
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        respond(['success' => false, 'message' => 'No account found with that email.'], 404);
+    }
+    $rq = trim((string) ($row['recovery_question'] ?? ''));
+    $rh = (string) ($row['recovery_answer_hash'] ?? '');
+    if ($rq === '' || $rh === '') {
+        respond([
+            'success' => false,
+            'code'    => 'no_recovery_question',
+            'message' => 'This account has no security question yet. Log in and add one under Portal → Settings, or use an email code if you still receive mail.',
+        ], 422);
+    }
+    respond(['success' => true, 'question' => $rq]);
+}
+
 if ($action === 'forgot_password') {
     $email = trim((string) ($body['email'] ?? ''));
     if ($email === '' || validate_portal_email($email) !== null) {
@@ -501,42 +675,94 @@ if ($action === 'forgot_password') {
 }
 
 if ($action === 'reset_password') {
-    $email    = trim((string) ($body['email'] ?? ''));
-    $token    = trim((string) ($body['token'] ?? ''));
-    $new      = (string) ($body['new_password'] ?? '');
-    $confirm  = (string) ($body['confirm_password'] ?? '');
-    if ($email === '' || $token === '' || strlen($new) < 8) {
-        respond(['error' => 'Invalid request.', 'field' => 'token'], 400);
+    $email           = trim((string) ($body['email'] ?? ''));
+    $token           = trim((string) ($body['token'] ?? ''));
+    $recoveryAnswer  = trim((string) ($body['recovery_answer'] ?? ''));
+    $new             = (string) ($body['new_password'] ?? '');
+    $confirm         = (string) ($body['confirm_password'] ?? '');
+    if ($email === '' || validate_portal_email($email) !== null || strlen($new) < 8) {
+        respond(['error' => 'Invalid request.', 'field' => 'email'], 400);
     }
     if ($new !== $confirm) {
         respond(['error' => 'Passwords do not match.', 'field' => 'confirm_password'], 422);
     }
+
     $db = getDB();
-    if (!ensure_portal_users_table($db) || !ensure_reset_tokens_table($db)) {
+    if (!ensure_portal_users_table($db)) {
         respond(['error' => 'Database error'], 500);
     }
-    $stmt = $db->prepare(
-        'SELECT rt.id AS rid, rt.portal_user_id, rt.used, rt.expires_at
-         FROM reset_tokens rt
-         INNER JOIN portal_users u ON u.id = rt.portal_user_id
-         WHERE u.email = ? AND rt.token = ?
-         ORDER BY rt.id DESC LIMIT 1'
-    );
+
+    if ($token !== '') {
+        if (!ensure_reset_tokens_table($db)) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $stmt = $db->prepare(
+            'SELECT rt.id AS rid, rt.portal_user_id, rt.used, rt.expires_at
+             FROM reset_tokens rt
+             INNER JOIN portal_users u ON u.id = rt.portal_user_id
+             WHERE u.email = ? AND rt.token = ?
+             ORDER BY rt.id DESC LIMIT 1'
+        );
+        if (!$stmt) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $stmt->bind_param('ss', $email, $token);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row || (int) ($row['used'] ?? 1) !== 0) {
+            respond(['error' => 'Invalid or expired code.', 'field' => 'token'], 400);
+        }
+        if (strtotime((string) ($row['expires_at'] ?? '')) < time()) {
+            respond(['error' => 'Invalid or expired code.', 'field' => 'token'], 400);
+        }
+        $rid = (int) $row['rid'];
+        $puid = (int) $row['portal_user_id'];
+        $hash = password_hash($new, PASSWORD_DEFAULT);
+        $db->begin_transaction();
+        try {
+            $up = $db->prepare('UPDATE portal_users SET password_hash = ? WHERE id = ?');
+            $up->bind_param('si', $hash, $puid);
+            if (!$up->execute()) {
+                throw new RuntimeException($up->error);
+            }
+            $up->close();
+            $mk = $db->prepare('UPDATE reset_tokens SET used = 1 WHERE id = ?');
+            $mk->bind_param('i', $rid);
+            $mk->execute();
+            $mk->close();
+            $db->commit();
+        } catch (Throwable $e) {
+            $db->rollback();
+            respond(['error' => 'Could not reset password.'], 500);
+        }
+        recovery_reset_rate_clear(recovery_reset_rate_key($email));
+        respond(['success' => true]);
+    }
+
+    if ($recoveryAnswer === '') {
+        respond(['error' => 'Enter the email code or your security answer.', 'field' => 'token'], 400);
+    }
+
+    $rateKey = recovery_reset_rate_key($email);
+    if (!recovery_reset_rate_allowed($rateKey)) {
+        respond(['error' => 'Too many attempts. Wait about 15 minutes and try again.', 'field' => 'recovery_answer'], 429);
+    }
+
+    $stmt = $db->prepare('SELECT id, recovery_answer_hash FROM portal_users WHERE email = ? LIMIT 1');
     if (!$stmt) {
         respond(['error' => 'Database error'], 500);
     }
-    $stmt->bind_param('ss', $email, $token);
+    $stmt->bind_param('s', $email);
     $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
+    $urow = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$row || (int) ($row['used'] ?? 1) !== 0) {
-        respond(['error' => 'Invalid or expired code.', 'field' => 'token'], 400);
+    $ansHash = (string) ($urow['recovery_answer_hash'] ?? '');
+    if (!$urow || $ansHash === '' || !password_verify(normalize_portal_recovery_answer($recoveryAnswer), $ansHash)) {
+        recovery_reset_rate_fail($rateKey);
+        respond(['error' => 'That answer does not match our records.', 'field' => 'recovery_answer'], 400);
     }
-    if (strtotime((string) ($row['expires_at'] ?? '')) < time()) {
-        respond(['error' => 'Invalid or expired code.', 'field' => 'token'], 400);
-    }
-    $rid = (int) $row['rid'];
-    $puid = (int) $row['portal_user_id'];
+    $puid = (int) $urow['id'];
     $hash = password_hash($new, PASSWORD_DEFAULT);
     $db->begin_transaction();
     try {
@@ -546,15 +772,20 @@ if ($action === 'reset_password') {
             throw new RuntimeException($up->error);
         }
         $up->close();
-        $mk = $db->prepare('UPDATE reset_tokens SET used = 1 WHERE id = ?');
-        $mk->bind_param('i', $rid);
-        $mk->execute();
-        $mk->close();
+        if (ensure_reset_tokens_table($db)) {
+            $cl = $db->prepare('UPDATE reset_tokens SET used = 1 WHERE portal_user_id = ? AND used = 0');
+            if ($cl) {
+                $cl->bind_param('i', $puid);
+                $cl->execute();
+                $cl->close();
+            }
+        }
         $db->commit();
     } catch (Throwable $e) {
         $db->rollback();
         respond(['error' => 'Could not reset password.'], 500);
     }
+    recovery_reset_rate_clear($rateKey);
     respond(['success' => true]);
 }
 

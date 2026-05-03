@@ -68,6 +68,32 @@
                 </div>
             </div>
 
+            <fieldset class="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+                <legend class="px-1 text-sm font-medium text-[#2c3e50]">Password recovery (optional)</legend>
+                <p class="text-xs text-gray-600">Set a security question so you can reset your password without relying on email (useful while email is not configured).</p>
+                <div>
+                    <label for="recovery_question_preset" class="mb-1.5 block text-sm font-medium text-[#2c3e50]">Question</label>
+                    <select id="recovery_question_preset" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-[#2c3e50] focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/25">
+                        <option value="">— Skip for now —</option>
+                        <option value="What was your favorite food as a child?">What was your favorite food as a child?</option>
+                        <option value="What city were you born in?">What city were you born in?</option>
+                        <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                        <option value="What is your mother’s maiden name?">What is your mother’s maiden name?</option>
+                        <option value="__custom__">Write my own question…</option>
+                    </select>
+                </div>
+                <div id="recovery_custom_wrap" class="hidden">
+                    <label for="recovery_question_custom" class="mb-1.5 block text-sm font-medium text-[#2c3e50]">Your question</label>
+                    <input type="text" id="recovery_question_custom" maxlength="255" autocomplete="off" placeholder="3–255 characters"
+                        class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-[#2c3e50] focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/25">
+                </div>
+                <div>
+                    <label for="recovery_answer" class="mb-1.5 block text-sm font-medium text-[#2c3e50]">Answer</label>
+                    <input type="text" id="recovery_answer" autocomplete="off" placeholder="You will need this exact answer to reset your password"
+                        class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-[#2c3e50] focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/25">
+                </div>
+            </fieldset>
+
             <button type="submit" id="submitBtn"
                 class="mt-1 w-full rounded-lg bg-[#22ccb2] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1bab96] focus:outline-none focus:ring-4 focus:ring-[#22ccb2]/30 disabled:cursor-not-allowed disabled:opacity-60">
                 Create account
@@ -171,7 +197,15 @@
             if (password && password.length < 8) {
                 errors.push('Password must be at least 8 characters.');
             }
-            return { errors, phone, first_name, last_name, email, dob, password };
+            var rq = recoveryQuestionForSubmit();
+            var ra = document.getElementById('recovery_answer').value.trim();
+            if ((rq !== '') !== (ra !== '')) {
+                errors.push('For password recovery, fill in both the question and answer, or leave both empty.');
+            }
+            if (rq !== '' && rq.length < 3) {
+                errors.push('Security question must be at least 3 characters.');
+            }
+            return { errors, phone, first_name, last_name, email, dob, password, recovery_question: rq, recovery_answer: ra };
         }
 
         document.getElementById('dob').max = yesterdayISO();
@@ -191,6 +225,31 @@
         }
         wireToggle('togglePw', 'password');
         wireToggle('togglePw2', 'confirm_password');
+
+        (function () {
+            var preset = document.getElementById('recovery_question_preset');
+            var wrap = document.getElementById('recovery_custom_wrap');
+            function syncCustom() {
+                if (preset.value === '__custom__') {
+                    wrap.classList.remove('hidden');
+                } else {
+                    wrap.classList.add('hidden');
+                }
+            }
+            preset.addEventListener('change', syncCustom);
+            syncCustom();
+        })();
+
+        function recoveryQuestionForSubmit() {
+            var preset = document.getElementById('recovery_question_preset').value;
+            if (!preset) {
+                return '';
+            }
+            if (preset === '__custom__') {
+                return document.getElementById('recovery_question_custom').value.trim();
+            }
+            return preset;
+        }
 
         var registerInFlight = false;
         async function runRegister() {
@@ -217,6 +276,10 @@
                 dob: validation.dob,
                 password: validation.password
             };
+            if (validation.recovery_question) {
+                payload.recovery_question = validation.recovery_question;
+                payload.recovery_answer = validation.recovery_answer;
+            }
             try {
                 const res = await fetch(API, {
                     method: 'POST',

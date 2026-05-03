@@ -92,6 +92,38 @@
                 <button type="submit" id="pwBtn" class="w-full rounded-xl bg-[#22ccb2] py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1bab96] disabled:opacity-60">Update password</button>
             </form>
         </section>
+
+        <section class="mt-8 max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-[#2c3e50]">Security question (forgot password)</h2>
+            <p id="recoveryCurrent" class="mt-2 text-sm text-gray-600"></p>
+            <p id="recError" class="mt-3 hidden rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-100" role="alert"></p>
+            <p id="recOk" class="mt-3 hidden rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 border border-emerald-100" role="status"></p>
+            <form id="recForm" class="mt-5 space-y-4" onsubmit="event.preventDefault();">
+                <div>
+                    <label for="rec_current_password" class="block text-sm font-medium mb-1">Current password</label>
+                    <input type="password" id="rec_current_password" required autocomplete="current-password" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/30">
+                </div>
+                <div>
+                    <label for="rec_question_preset" class="block text-sm font-medium mb-1">Question</label>
+                    <select id="rec_question_preset" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/30">
+                        <option value="What was your favorite food as a child?">What was your favorite food as a child?</option>
+                        <option value="What city were you born in?">What city were you born in?</option>
+                        <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                        <option value="What is your mother’s maiden name?">What is your mother’s maiden name?</option>
+                        <option value="__custom__">Write my own question…</option>
+                    </select>
+                </div>
+                <div id="rec_custom_wrap" class="hidden">
+                    <label for="rec_question_custom" class="block text-sm font-medium mb-1">Your question</label>
+                    <input type="text" id="rec_question_custom" maxlength="255" autocomplete="off" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/30">
+                </div>
+                <div>
+                    <label for="rec_answer" class="block text-sm font-medium mb-1">Answer</label>
+                    <input type="text" id="rec_answer" required autocomplete="off" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-[#22ccb2] focus:outline-none focus:ring-2 focus:ring-[#22ccb2]/30" placeholder="New answer you will remember">
+                </div>
+                <button type="submit" id="recBtn" class="w-full rounded-xl bg-[#22ccb2] py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1bab96] disabled:opacity-60">Save security question</button>
+            </form>
+        </section>
     </main>
     <script>
         const AUTH_API = '../../api/patient_auth.php';
@@ -123,6 +155,28 @@
                     return;
                 }
                 document.getElementById('navUserName').textContent = meData.name || 'Patient';
+                var cur = document.getElementById('recoveryCurrent');
+                if (meData.has_recovery_question && meData.recovery_question) {
+                    cur.textContent = 'Current question: “' + meData.recovery_question + '”. You can replace it below.';
+                } else {
+                    cur.textContent = 'No security question yet. Add one to reset your password without email.';
+                }
+                if (meData.recovery_question) {
+                    var preset = document.getElementById('rec_question_preset');
+                    var found = false;
+                    for (var i = 0; i < preset.options.length; i++) {
+                        if (preset.options[i].value === meData.recovery_question) {
+                            preset.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found && meData.recovery_question) {
+                        preset.value = '__custom__';
+                        document.getElementById('rec_question_custom').value = meData.recovery_question;
+                        document.getElementById('rec_custom_wrap').classList.remove('hidden');
+                    }
+                }
                 document.getElementById('settingsBody').classList.remove('hidden');
             } catch (e) {
                 window.location.replace('../login.html');
@@ -157,6 +211,72 @@
                     document.getElementById('pwForm').reset();
                 } else {
                     err.textContent = data.error || 'Could not update password.';
+                    err.classList.remove('hidden');
+                }
+            } catch (e) {
+                err.textContent = 'Network error.';
+                err.classList.remove('hidden');
+            }
+            btn.disabled = false;
+        });
+
+        (function () {
+            var preset = document.getElementById('rec_question_preset');
+            var wrap = document.getElementById('rec_custom_wrap');
+            preset.addEventListener('change', function () {
+                if (preset.value === '__custom__') {
+                    wrap.classList.remove('hidden');
+                } else {
+                    wrap.classList.add('hidden');
+                }
+            });
+        })();
+
+        function recQuestionValue() {
+            var preset = document.getElementById('rec_question_preset').value;
+            if (preset === '__custom__') {
+                return document.getElementById('rec_question_custom').value.trim();
+            }
+            return preset;
+        }
+
+        document.getElementById('recForm').addEventListener('submit', async function () {
+            var err = document.getElementById('recError');
+            var ok = document.getElementById('recOk');
+            err.classList.add('hidden');
+            ok.classList.add('hidden');
+            var btn = document.getElementById('recBtn');
+            btn.disabled = true;
+            try {
+                if (!csrfToken) await loadCsrf();
+                var q = recQuestionValue();
+                if (q.length < 3) {
+                    err.textContent = 'Question must be at least 3 characters.';
+                    err.classList.remove('hidden');
+                    btn.disabled = false;
+                    return;
+                }
+                var body = {
+                    action: 'update_recovery',
+                    current_password: document.getElementById('rec_current_password').value,
+                    recovery_question: q,
+                    recovery_answer: document.getElementById('rec_answer').value,
+                    csrf_token: csrfToken
+                };
+                var res = await fetch(AUTH_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body)
+                });
+                var data = await res.json().catch(function () { return {}; });
+                if (res.ok && data.success) {
+                    ok.textContent = 'Security question saved.';
+                    ok.classList.remove('hidden');
+                    document.getElementById('recForm').reset();
+                    document.getElementById('recoveryCurrent').textContent = 'Current question: “' + q + '”. You can replace it below.';
+                } else {
+                    err.textContent = data.error || 'Could not save.';
                     err.classList.remove('hidden');
                 }
             } catch (e) {
