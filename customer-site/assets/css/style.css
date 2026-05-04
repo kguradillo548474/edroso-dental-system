@@ -236,6 +236,138 @@ body {
     z-index: 2;
 }
 
+/* About page — operatory photo (negative space left), equipment on the right */
+.about-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    min-height: 22rem;
+    padding-top: 3rem;
+    padding-bottom: 3.5rem;
+    box-shadow:
+        0 24px 52px -28px rgba(44, 62, 80, 0.22),
+        0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+@media (min-width: 640px) {
+    .about-hero {
+        min-height: 26rem;
+        padding-top: 3.5rem;
+        padding-bottom: 4rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .about-hero {
+        min-height: 30rem;
+        padding-top: 4.5rem;
+        padding-bottom: 5rem;
+    }
+}
+
+.about-hero__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-color: #1a9e8f;
+    background-image: url('../images/about-hero.png');
+    background-size: cover;
+    background-position: 88% center;
+    transform: scale(1.02);
+}
+
+.about-hero__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+        100deg,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(255, 255, 255, 0.88) 34%,
+        rgba(255, 255, 255, 0.55) 52%,
+        rgba(245, 250, 249, 0.22) 100%
+    );
+    box-shadow:
+        inset 0 0 90px rgba(255, 255, 255, 0.28),
+        inset 0 20px 60px -34px rgba(34, 204, 178, 0.05);
+}
+
+@media (max-width: 1023px) {
+    .about-hero__bg {
+        background-position: 70% 40%;
+    }
+
+    .about-hero__overlay {
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.97) 0%,
+            rgba(255, 255, 255, 0.86) 40%,
+            rgba(248, 252, 251, 0.55) 100%
+        );
+    }
+}
+
+.about-hero__content {
+    position: relative;
+    z-index: 2;
+}
+
+/* Service detail — hero background + readable content card */
+.service-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    min-height: 20rem;
+    box-shadow:
+        0 24px 52px -28px rgba(44, 62, 80, 0.18),
+        0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+@media (min-width: 640px) {
+    .service-hero {
+        min-height: 22rem;
+    }
+}
+
+.service-hero__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-color: #e8f4f2;
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.03);
+}
+
+.service-hero__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+        165deg,
+        rgba(255, 255, 255, 0.94) 0%,
+        rgba(255, 255, 255, 0.82) 38%,
+        rgba(248, 252, 251, 0.55) 100%
+    );
+    box-shadow: inset 0 0 80px rgba(255, 255, 255, 0.25);
+}
+
+.service-hero--has-photo .service-hero__overlay {
+    background: linear-gradient(
+        115deg,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(255, 255, 255, 0.72) 42%,
+        rgba(245, 250, 249, 0.35) 100%
+    );
+}
+
+.service-hero__content {
+    position: relative;
+    z-index: 2;
+}
+
 /* Dentists + CTA — single teal vignette (#22ccb2), no split borders between subsections */
 .home-lower-vignette {
     position: relative;

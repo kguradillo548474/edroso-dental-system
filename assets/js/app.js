@@ -57,6 +57,39 @@ const api = {
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         return data;
     },
+    /** Multipart POST (e.g. file upload). Do not set Content-Type manually. */
+    async postForm(endpoint, formData) {
+        if (!(formData instanceof FormData)) {
+            throw new Error('postForm expects FormData');
+        }
+        const csrfToken = await fetchCsrfToken();
+        if (![...formData.keys()].includes('csrf_token')) {
+            formData.append('csrf_token', csrfToken);
+        }
+        const [base, qs] = endpoint.split('?');
+        const url = new URL(`${API_BASE}/${base}`, window.location.href);
+        if (qs) new URLSearchParams(qs).forEach((v, k) => url.searchParams.set(k, v));
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const text = await res.text();
+        let data;
+        try {
+            data = text ? JSON.parse(text) : {};
+        } catch (e) {
+            const snippet = text.slice(0, 80).replace(/\s+/g, ' ');
+            throw new Error(
+                snippet.startsWith('<')
+                    ? 'Server returned HTML instead of JSON. Check Network tab for api/' + base + '.'
+                    : 'Invalid JSON from server: ' + snippet
+            );
+        }
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+    },
     get:    (ep, params)       => api.request(ep, 'GET',    null, params || {}),
     post:   (ep, body)         => api.request(ep, 'POST',   body, {}),
     put:    (ep, body, params) => api.request(ep, 'PUT',    body, params || {}),

@@ -37,6 +37,30 @@
             function esc(s) {
                 return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             }
+            function escAttr(s) {
+                return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            }
+            function imgSrc(s) {
+                var u = String(s.image_url || '').trim();
+                if (!u || !/^(\/|https?:\/\/|assets\/)/i.test(u) || /^javascript:/i.test(u)) return '';
+                var base = /^https?:\/\//i.test(u) ? u : encodeURI(u);
+                if (s.image_version != null && String(s.image_version) !== '') {
+                    base += (base.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(s.image_version));
+                }
+                return base;
+            }
+            function cardTop(s) {
+                var rawName = s.name || 'Service';
+                var src = imgSrc(s);
+                if (src) {
+                    return '<div class="relative -mx-6 -mt-6 h-36 shrink-0 overflow-hidden bg-gray-100 sm:h-40">' +
+                        '<img src="' + escAttr(src) + '" alt="' + escAttr(rawName) + '" class="h-full w-full object-cover" loading="lazy" decoding="async" />' +
+                        '<div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true"></div></div>';
+                }
+                return '<div class="flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 text-[var(--primary)] sm:h-32" aria-hidden="true">' +
+                    '<svg class="h-11 w-11 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>';
+            }
+            var chevron = '<svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>';
             var grid = document.getElementById('servicesCatalogGrid');
             var hint = document.getElementById('servicesCatalogHint');
             fetch('../api/services.php?scope=catalog', { credentials: 'same-origin' })
@@ -50,19 +74,22 @@
                         return;
                     }
                     grid.innerHTML = list.map(function (s) {
+                        var id = parseInt(s.id, 10) || 0;
                         var price = s.price != null ? '\u20B1' + parseFloat(s.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-                        return '<article class="flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">' +
-                            '<div class="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-[var(--primary)]" aria-hidden="true">' +
-                            '<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>' +
-                            '<h2 class="mt-4 text-lg font-semibold text-[var(--secondary)]">' + esc(s.name) + '</h2>' +
+                        var blurb = (s.description && String(s.description).trim()) ? esc(String(s.description).trim()) : 'Book this service through our online portal or ask our front desk for availability.';
+                        return '<article class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md sm:shadow-sm">' +
+                            cardTop(s) +
+                            '<div class="flex flex-1 flex-col px-6 pb-6 pt-5">' +
+                            '<h2 class="text-lg font-semibold text-[var(--secondary)]">' + esc(s.name) + '</h2>' +
                             '<p class="mt-2 text-sm font-medium text-[var(--primary)]">' + price + '</p>' +
-                            '<p class="mt-3 flex-1 text-sm leading-relaxed text-gray-600">Book this service through our online portal or ask our front desk for availability.</p>' +
+                            '<p class="mt-3 flex-1 text-sm leading-relaxed text-gray-600">' + blurb + '</p>' +
+                            '<a href="service.html?id=' + id + '" class="mt-4 inline-flex items-center text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]">Learn more' + chevron + '</a>' +
                             '<div class="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-4">' +
                             '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">Cash</span>' +
                             '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">Card</span>' +
                             '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">GCash</span>' +
                             '<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[var(--secondary)]">Insurance</span>' +
-                            '</div></article>';
+                            '</div></div></article>';
                     }).join('');
                 })
                 .catch(function () {

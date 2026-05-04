@@ -54,12 +54,14 @@
             <!-- Section 2: Services -->
             <section class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-neutral-dark/60">
                 <h2 class="text-lg font-semibold text-secondary mb-4 flex items-center gap-2"><i class="fas fa-tooth text-primary"></i> Treatment &amp; service list</h2>
-                <p class="text-xs text-gray-500 mb-3">Edit name and price inline. Inactive services stay hidden from new selections where applicable.</p>
+                <p class="text-xs text-gray-500 mb-3">Edit name, optional short description, price, and an optional photo. Use <strong>Photo path / URL</strong> (e.g. <code class="text-xs bg-neutral px-1 rounded">assets/images/services/cleaning.jpg</code>) or <strong>Upload image</strong> (saved under <code class="text-xs bg-neutral px-1 rounded">assets/uploads/services/</code>). Photos appear on the public site service cards and the service detail page. Inactive services stay hidden from new selections where applicable.</p>
                 <div class="overflow-x-auto mb-4">
                     <table class="min-w-full text-sm">
                         <thead>
                             <tr class="text-left text-xs text-gray-400 uppercase border-b border-neutral-dark">
-                                <th class="py-2 pr-3">Service</th>
+                                <th class="py-2 pr-3 min-w-[140px]">Service</th>
+                                <th class="py-2 pr-3 min-w-[180px]">Brief description</th>
+                                <th class="py-2 pr-3 min-w-[220px]">Photo path / upload</th>
                                 <th class="py-2 pr-3 w-36">Price (₱)</th>
                                 <th class="py-2 pr-3">Active</th>
                                 <th class="py-2 text-right">Actions</th>
@@ -304,22 +306,40 @@
         const list = data.services || [];
         const tb = document.getElementById('servicesTableBody');
         if (!list.length) {
-            tb.innerHTML = '<tr><td colspan="4" class="py-6 text-gray-400">No services.</td></tr>';
+            tb.innerHTML = '<tr><td colspan="6" class="py-6 text-gray-400">No services.</td></tr>';
             return;
         }
         const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-        tb.innerHTML = list.map(sv => `
+        const escUrl = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        tb.innerHTML = list.map(sv => {
+            const iu = sv.image_url ? String(sv.image_url) : '';
+            const prevSrc = iu && /^https?:\/\//i.test(iu) ? escUrl(iu) : (iu && /^(assets\/|\/)/i.test(iu) ? ('../' + escUrl(iu.replace(/^\//, ''))) : '');
+            const prev = prevSrc
+                ? `<div class="mb-2"><img src="${prevSrc}" alt="" class="h-14 w-24 rounded object-cover border border-neutral-dark/40 bg-neutral" loading="lazy" onerror="this.style.display='none'"></div>`
+                : '';
+            return `
             <tr class="border-b border-neutral-dark/40" data-sid="${sv.id}">
-                <td class="py-2 pr-2"><input type="text" class="svc-name w-full px-2 py-1.5 border border-neutral-dark rounded text-sm" value="${esc(sv.name)}"></td>
-                <td class="py-2 pr-2"><input type="number" step="0.01" min="0" class="svc-price w-full px-2 py-1.5 border border-neutral-dark rounded text-sm" value="${sv.price}"></td>
-                <td class="py-2 pr-2">
+                <td class="py-2 pr-2 align-top"><input type="text" class="svc-name w-full px-2 py-1.5 border border-neutral-dark rounded text-sm" value="${esc(sv.name)}"></td>
+                <td class="py-2 pr-2 align-top"><textarea class="svc-desc w-full min-h-[3.5rem] px-2 py-1.5 border border-neutral-dark rounded text-sm" rows="2" placeholder="Shown after &quot;Learn more&quot;">${esc(sv.description || '')}</textarea></td>
+                <td class="py-2 pr-2 align-top text-xs">
+                    ${prev}
+                    <input type="text" class="svc-image w-full px-2 py-1.5 border border-neutral-dark rounded font-mono text-xs mb-2" value="${esc(sv.image_url || '')}" placeholder="assets/images/… or URL" spellcheck="false">
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="svc-file text-xs max-w-[10rem]">
+                        <button type="button" class="upload-svc px-2 py-1 rounded bg-primary text-white text-xs font-medium hover:opacity-95">Upload</button>
+                        <button type="button" class="clear-svc-img px-2 py-1 rounded border border-neutral-dark text-xs text-gray-600 hover:bg-neutral">Clear</button>
+                    </div>
+                </td>
+                <td class="py-2 pr-2 align-top"><input type="number" step="0.01" min="0" class="svc-price w-full px-2 py-1.5 border border-neutral-dark rounded text-sm" value="${sv.price}"></td>
+                <td class="py-2 pr-2 align-top">
                     <button type="button" class="toggle-active px-2 py-1 rounded text-xs font-medium ${sv.active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}" data-active="${sv.active ? 1 : 0}">${sv.active ? 'Active' : 'Inactive'}</button>
                 </td>
-                <td class="py-2 text-right">
+                <td class="py-2 text-right align-top">
                     <button type="button" class="save-row px-2 py-1 text-primary text-xs font-medium">Save</button>
                     <button type="button" class="del-row px-2 py-1 text-red-500 text-xs font-medium">Delete</button>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
     }
 
     document.getElementById('servicesTableBody').addEventListener('click', async (e) => {
@@ -337,9 +357,11 @@
         if (e.target.classList.contains('save-row')) {
             const name = tr.querySelector('.svc-name').value.trim();
             const price = parseFloat(tr.querySelector('.svc-price').value);
+            const description = (tr.querySelector('.svc-desc') && tr.querySelector('.svc-desc').value) ? tr.querySelector('.svc-desc').value.trim() : '';
+            const image_url = tr.querySelector('.svc-image') ? tr.querySelector('.svc-image').value.trim() : '';
             if (!name) { showToast('Name required', 'error'); return; }
             try {
-                await api.put('services.php?id=' + id, { name, price: isNaN(price) ? 0 : price });
+                await api.put('services.php?id=' + id, { name, price: isNaN(price) ? 0 : price, description, image_url });
                 showToast('Service saved');
                 renderServices();
             } catch (err) { showToast(err.message, 'error'); }
@@ -352,14 +374,36 @@
                 renderServices();
             } catch (err) { showToast(err.message, 'error'); }
         }
+        if (e.target.classList.contains('upload-svc')) {
+            const inp = tr.querySelector('.svc-file');
+            if (!inp || !inp.files || !inp.files[0]) { showToast('Choose an image file first', 'error'); return; }
+            const fd = new FormData();
+            fd.append('image', inp.files[0]);
+            try {
+                await api.postForm('services.php?id=' + id, fd);
+                inp.value = '';
+                showToast('Photo uploaded');
+                renderServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+        if (e.target.classList.contains('clear-svc-img')) {
+            if (!confirm('Remove stored photo/URL for this service?')) return;
+            try {
+                await api.post('services.php?id=' + id + '&action=clear_image', {});
+                showToast('Photo cleared');
+                renderServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
     });
 
     document.getElementById('addServiceBtn').addEventListener('click', async () => {
         const name = prompt('Service name');
         if (!name || !name.trim()) return;
         const price = parseFloat(prompt('Price (₱)', '0') || '0');
+        const description = (prompt('Short description for website (optional)', '') || '').trim();
+        const image_url = (prompt('Photo path or https URL (optional)', '') || '').trim();
         try {
-            await api.post('services.php', { name: name.trim(), price: isNaN(price) ? 0 : price });
+            await api.post('services.php', { name: name.trim(), price: isNaN(price) ? 0 : price, description, image_url });
             showToast('Service added');
             renderServices();
         } catch (err) { showToast(err.message, 'error'); }

@@ -3,13 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Services — Edroso Dental Clinic</title>
-    <meta http-equiv="refresh" content="0; url=services.html">
-    <script>
-        window.location.replace('services.html');
-    </script>
+    <meta name="description" content="Service details and pricing at Edroso Dental Clinic.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%A6%B7%3C/text%3E%3C/svg%3E">
+    <title>Service — Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260504b">
 </head>
-<body>
-    <p>Redirecting to <a href="services.html">services</a>…</p>
+<body class="font-sans antialiased min-h-screen flex flex-col bg-white text-gray-900">
+    <div id="nav"></div>
+    <main class="flex-1 w-full">
+        <section id="serviceHero" class="service-hero border-b border-gray-100 bg-gradient-to-b from-[var(--surface)] to-white">
+            <div id="serviceHeroBg" class="service-hero__bg hidden" aria-hidden="true"></div>
+            <div id="serviceHeroOverlay" class="service-hero__overlay"></div>
+            <div class="service-hero__content mx-auto max-w-2xl px-4 py-10 sm:py-12">
+                <div class="rounded-2xl border border-white/60 bg-white/90 p-6 shadow-lg backdrop-blur-sm sm:p-8">
+                    <div id="serviceCardThumb" class="mb-5 hidden overflow-hidden rounded-xl bg-gray-100 ring-1 ring-gray-100"></div>
+                    <p id="serviceBreadcrumb" class="text-sm text-gray-500">
+                        <a href="services.html" class="font-medium text-[var(--primary)] hover:text-[var(--primary-dark)]">Our Services</a>
+                        <span class="mx-1.5 text-gray-300" aria-hidden="true">/</span>
+                        <span id="serviceCrumbName">…</span>
+                    </p>
+                    <h1 id="serviceTitle" class="mt-3 text-3xl font-bold tracking-tight text-[var(--secondary)] sm:text-4xl">
+                        Loading…
+                    </h1>
+                    <p id="servicePrice" class="mt-4 text-lg font-semibold text-[var(--primary)]" aria-live="polite"></p>
+                    <div id="serviceBody" class="mt-6 text-sm leading-relaxed text-gray-600 sm:text-base"></div>
+                    <div class="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                        <a href="portal/book.html" data-book-cta class="inline-flex items-center justify-center rounded-xl bg-[var(--primary)] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[var(--primary-dark)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2">
+                            Book this service
+                        </a>
+                        <a href="services.html" class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-[var(--secondary)] shadow-sm transition hover:bg-gray-50">
+                            View all services
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <div id="footer"></div>
+    <script src="assets/js/main.js?v=20260504"></script>
+    <script src="assets/js/booking-cta.js"></script>
+    <script>
+    (function () {
+        var params = new URLSearchParams(window.location.search);
+        var rawId = params.get('id');
+        var id = rawId != null ? parseInt(rawId, 10) : 0;
+        var hero = document.getElementById('serviceHero');
+        var heroBg = document.getElementById('serviceHeroBg');
+        var thumb = document.getElementById('serviceCardThumb');
+        var titleEl = document.getElementById('serviceTitle');
+        var priceEl = document.getElementById('servicePrice');
+        var bodyEl = document.getElementById('serviceBody');
+        var crumbEl = document.getElementById('serviceCrumbName');
+
+        function formatPrice(n) {
+            if (n == null || isNaN(n)) return '';
+            return '\u20B1' + parseFloat(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function escHtml(t) {
+            return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function escAttr(t) {
+            return String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        }
+
+        function buildImgSrc(s) {
+            var u = String(s.image_url || '').trim();
+            if (!u || !/^(\/|https?:\/\/|assets\/)/i.test(u) || /^javascript:/i.test(u)) return '';
+            var base = /^https?:\/\//i.test(u) ? u : encodeURI(u);
+            if (s.image_version != null && String(s.image_version) !== '') {
+                base += (base.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(s.image_version));
+            }
+            return base;
+        }
+
+        function cssUrl(u) {
+            return String(u).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        if (!id || id <= 0) {
+            titleEl.textContent = 'Service';
+            crumbEl.textContent = 'Select a service';
+            priceEl.textContent = '';
+            bodyEl.innerHTML = '<p>Choose a service from our <a class="font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]" href="services.html">services list</a> to see details and pricing.</p>';
+            document.title = 'Services — Edroso Dental Clinic';
+            return;
+        }
+
+        fetch('../api/services.php?scope=catalog', { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.error) throw new Error(data.error);
+                var list = (data && data.services) ? data.services : [];
+                var s = list.find(function (x) { return parseInt(x.id, 10) === id; });
+                if (!s) {
+                    titleEl.textContent = 'Service not found';
+                    crumbEl.textContent = 'Unavailable';
+                    document.title = 'Service not found — Edroso Dental Clinic';
+                    priceEl.textContent = '';
+                    bodyEl.innerHTML = '<p class="text-gray-600">This service is not available or may have been removed. See <a class="font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]" href="services.html">current services</a>.</p>';
+                    return;
+                }
+                document.title = (s.name || 'Service') + ' — Edroso Dental Clinic';
+                titleEl.textContent = s.name || 'Service';
+                crumbEl.textContent = s.name || 'Service';
+                priceEl.textContent = formatPrice(s.price);
+
+                var img = buildImgSrc(s);
+                if (img && hero && heroBg) {
+                    hero.classList.add('service-hero--has-photo');
+                    heroBg.classList.remove('hidden');
+                    heroBg.style.backgroundImage = "url('" + cssUrl(img) + "')";
+                    if (thumb) {
+                        thumb.classList.remove('hidden');
+                        thumb.innerHTML = '<img src="' + escAttr(img) + '" alt="' + escAttr(s.name || 'Service') + '" class="aspect-[16/9] max-h-48 w-full object-cover" loading="eager" decoding="async" />';
+                    }
+                } else {
+                    hero.classList.remove('service-hero--has-photo');
+                    heroBg.classList.add('hidden');
+                    heroBg.style.backgroundImage = '';
+                    if (thumb) {
+                        thumb.classList.add('hidden');
+                        thumb.innerHTML = '';
+                    }
+                }
+
+                var desc = (s.description && String(s.description).trim()) ? String(s.description).trim() : '';
+                if (desc) {
+                    bodyEl.innerHTML = '<p>' + escHtml(desc).replace(/\n/g, '<br>') + '</p>';
+                } else {
+                    bodyEl.innerHTML = '<p>Book this service through our online portal or ask our front desk for more information and availability.</p>';
+                }
+            })
+            .catch(function () {
+                titleEl.textContent = 'Could not load service';
+                crumbEl.textContent = 'Error';
+                priceEl.textContent = '';
+                bodyEl.innerHTML = '<p class="text-gray-600">Please try again later or call the clinic.</p>';
+            });
+    })();
+    </script>
 </body>
 </html>

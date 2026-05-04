@@ -195,7 +195,7 @@
             <div class="row"><span>Description</span><span>${escHtml(p.description || '—')}</span></div>
             <div class="row"><span>Method</span><span>${escHtml(p.payment_method)}</span></div>
             <div class="row"><span>Status</span><span>${escHtml(p.status)}</span></div>
-            <div class="row"><span>Date</span><span>${p.payment_date ? escHtml(formatDate(p.payment_date)) : '—'}</span></div>
+            <div class="row"><span>Date</span><span>${(p.display_date || p.payment_date) ? escHtml(formatDate(p.display_date || p.payment_date)) : '—'}</span></div>
             <p class="amt">${escHtml(formatMoney(p.amount))}</p>
             <script>window.onload=function(){window.print();}<\/script>
             </body></html>`);
@@ -258,7 +258,7 @@
                     <td class="px-4 py-3 text-sm text-secondary">
                         <span class="px-2 py-1 bg-neutral-dark rounded text-xs">${paymentMethod}</span>
                     </td>
-                    <td class="px-4 py-3 text-sm text-secondary">${p.payment_date ? formatDate(p.payment_date) : '—'}</td>
+                    <td class="px-4 py-3 text-sm text-secondary">${(p.display_date || p.payment_date) ? formatDate(p.display_date || p.payment_date) : '—'}</td>
                     <td class="px-4 py-3">
                         <span class="px-2 py-1 text-xs rounded-full font-medium ${getStatusClass(p.status)}">${paymentStatus}</span>
                     </td>

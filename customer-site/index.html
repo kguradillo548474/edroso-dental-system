@@ -88,59 +88,68 @@
                 <p class="mx-auto mt-3 max-w-2xl text-center text-sm text-gray-700 sm:text-base">
                     From routine care to smile makeovers—we have you covered.
                 </p>
-                <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:mt-12 lg:grid-cols-4 lg:gap-6">
-                    <article class="flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-6">
-                        <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-[var(--primary)]">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-                            </svg>
-                        </div>
-                        <h3 class="mt-4 text-base font-semibold text-[var(--secondary)]">General Dentistry</h3>
-                        <p class="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
-                            Checkups, cleanings, and fillings to keep your teeth healthy year-round.
-                        </p>
-                        <a href="services.html" class="mt-4 inline-flex items-center text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]">
-                            Learn more
-                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                    </article>
-                    <article class="flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-6">
-                        <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-[var(--primary)]">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
-                            </svg>
-                        </div>
-                        <h3 class="mt-4 text-base font-semibold text-[var(--secondary)]">Orthodontics</h3>
-                        <p class="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
-                            Straighter smiles with modern aligners and braces options for all ages.
-                        </p>
-                        <a href="services.html" class="mt-4 inline-flex items-center text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]">
-                            Learn more
-                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                    </article>
-                    <article class="flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-6">
-                        <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-[var(--primary)]">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                            </svg>
-                        </div>
-                        <h3 class="mt-4 text-base font-semibold text-[var(--secondary)]">Emergency</h3>
-                        <p class="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
-                            Urgent tooth pain or injury—reach out and we will guide you quickly.
-                        </p>
-                        <a href="services.html" class="mt-4 inline-flex items-center text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]">
-                            Learn more
-                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                    </article>
-                </div>
+                <p id="homeServicesHint" class="mt-10 text-center text-sm text-gray-500">Loading services…</p>
+                <div id="homeServicesGrid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-8" aria-live="polite"></div>
+                <script>
+                (function () {
+                    var grid = document.getElementById('homeServicesGrid');
+                    var hint = document.getElementById('homeServicesHint');
+                    if (!grid || !hint) return;
+                    function esc(s) {
+                        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    }
+                    function escAttr(s) {
+                        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                    }
+                    function imgSrc(s) {
+                        var u = String(s.image_url || '').trim();
+                        if (!u || !/^(\/|https?:\/\/|assets\/)/i.test(u) || /^javascript:/i.test(u)) return '';
+                        var base = /^https?:\/\//i.test(u) ? u : encodeURI(u);
+                        if (s.image_version != null && String(s.image_version) !== '') {
+                            base += (base.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(s.image_version));
+                        }
+                        return base;
+                    }
+                    function cardMedia(s) {
+                        var rawName = s.name || 'Service';
+                        var src = imgSrc(s);
+                        if (src) {
+                            return '<div class="relative -mx-6 -mt-6 h-36 shrink-0 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50 sm:h-40">' +
+                                '<img src="' + escAttr(src) + '" alt="' + escAttr(rawName) + '" class="h-full w-full object-cover" loading="lazy" decoding="async" />' +
+                                '<div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" aria-hidden="true"></div>' +
+                                '</div>';
+                        }
+                        return '<div class="flex h-28 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 text-[var(--primary)] -mx-1 sm:h-32" aria-hidden="true">' +
+                            '<svg class="h-12 w-12 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>';
+                    }
+                    var chevron = '<svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>';
+                    fetch('../api/services.php?scope=catalog', { credentials: 'same-origin', cache: 'no-store' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            var list = (data && data.services) ? data.services : [];
+                            if (data && data.error) throw new Error(data.error);
+                            hint.classList.add('hidden');
+                            if (!list.length) {
+                                grid.innerHTML = '<p class="col-span-full text-center text-sm text-gray-600 py-6">No services are listed yet. Please check back or call the clinic.</p>';
+                                return;
+                            }
+                            grid.innerHTML = list.map(function (s) {
+                                var id = parseInt(s.id, 10) || 0;
+                                var name = esc(s.name || 'Service');
+                                return '<article class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md transition hover:shadow-lg sm:shadow-sm">' +
+                                    cardMedia(s) +
+                                    '<div class="flex flex-1 flex-col px-6 pb-6 pt-5 sm:px-6">' +
+                                    '<h3 class="text-base font-semibold text-[var(--secondary)]">' + name + '</h3>' +
+                                    '<a href="service.html?id=' + id + '" class="mt-auto inline-flex items-center pt-5 text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-dark)]">' +
+                                    'Learn more' + chevron + '</a></div></article>';
+                            }).join('');
+                        })
+                        .catch(function () {
+                            hint.textContent = 'Could not load services. Visit our full list on the Services page.';
+                            hint.classList.remove('hidden');
+                        });
+                })();
+                </script>
                 </div>
             </div>
         </section>
@@ -154,7 +163,7 @@
                     Our dentists
                 </h2>
                 <p class="mx-auto mt-3 max-w-2xl text-center text-sm text-gray-600 sm:text-base">
-                    Meet the team and see the days and hours each dentist is available—the same schedule used when you book online.
+                    Meet the team and see the days and hours each dentist is available, the same schedule used when you book online.
                 </p>
                 <div id="homeDentistsGrid" class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:mt-12"></div>
             </div>
@@ -167,7 +176,7 @@
                     Ready for your appointment?
                 </h2>
                 <p class="mx-auto mt-3 max-w-lg text-sm text-white/90 sm:text-base">
-                    Take the first step toward a healthier smile—our team is here to help.
+                    Take the first step toward a healthier smile, our team is here to help.
                 </p>
                 <a href="portal/book.html" data-book-cta class="mt-6 inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[var(--primary)] shadow transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[var(--primary)] sm:mt-8 sm:px-8 sm:py-3.5 sm:text-base">
                     Book an Appointment

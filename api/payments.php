@@ -78,6 +78,23 @@ function loadClinicHeader(mysqli $db): array {
     return $defaults;
 }
 
+/** Date shown in admin when payment_date was never set (legacy rows). */
+function payment_display_date_row(array $row): ?string {
+    $pd = $row['payment_date'] ?? null;
+    if ($pd !== null && trim((string) $pd) !== '') {
+        return substr(trim((string) $pd), 0, 10);
+    }
+    $ca = $row['created_at'] ?? null;
+    if ($ca !== null && trim((string) $ca) !== '') {
+        return substr(trim((string) $ca), 0, 10);
+    }
+    $ad = $row['appointment_date'] ?? null;
+    if ($ad !== null && trim((string) $ad) !== '') {
+        return substr(trim((string) $ad), 0, 10);
+    }
+    return null;
+}
+
 function loadReceiptFormat(mysqli $db): string {
     $res = @$db->query("SELECT `value` FROM settings WHERE `key` = 'billing_preferences' LIMIT 1");
     if ($res && ($row = $res->fetch_assoc())) {
@@ -103,6 +120,7 @@ switch ($method) {
             if (!$row) {
                 respond(['error' => 'Payment not found'], 404);
             }
+            $row['display_date'] = payment_display_date_row($row);
             $row['clinic_header'] = loadClinicHeader($db);
             $row['receipt_format'] = loadReceiptFormat($db);
             respond($row);
@@ -144,7 +162,10 @@ switch ($method) {
         }
 
         $payments = [];
-        while ($row = $result->fetch_assoc()) $payments[] = $row;
+        while ($row = $result->fetch_assoc()) {
+            $row['display_date'] = payment_display_date_row($row);
+            $payments[] = $row;
+        }
 
         $statsResult = $db->query("SELECT 
             SUM(CASE WHEN status='Paid' THEN amount ELSE 0 END) as total_paid,
@@ -198,11 +219,19 @@ switch ($method) {
         $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
         if ($id <= 0) respond(['error' => 'ID required'], 400);
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $bodyNoCsrf = $body;
+        unset($bodyNoCsrf['csrf_token']);
 
-        if (isset($body['status']) && count($body) === 1) {
-            $payDate = ($body['status'] === 'Paid') ? date('Y-m-d') : null;
-            $stmt = $db->prepare("UPDATE payments SET status=?, payment_date=? WHERE id=?");
-            $stmt->bind_param('ssi', $body['status'], $payDate, $id);
+        /** Mark Paid / change status only — body includes csrf_token from admin client. */
+        if (isset($body['status']) && count($bodyNoCsrf) === 1) {
+            $status = (string) $body['status'];
+            $stmt = $db->prepare(
+                "UPDATE payments SET status = ?, payment_date = CASE
+                    WHEN ? IN ('Paid','Partial') THEN IFNULL(payment_date, CURDATE())
+                    ELSE NULL
+                 END WHERE id = ?"
+            );
+            $stmt->bind_param('ssi', $status, $status, $id);
         } else {
             $amount = floatval($body['amount'] ?? 0);
             $pmRaw = (string) ($body['payment_method'] ?? '');
@@ -210,8 +239,16 @@ switch ($method) {
             if ($pm === null) {
                 respond(['error' => 'Payment method must be one of: Cash, Card, GCash, Insurance.'], 400);
             }
-            $stmt = $db->prepare("UPDATE payments SET amount=?, payment_method=?, status=?, description=? WHERE id=?");
-            $stmt->bind_param('dsssi', $amount, $pm, $body['status'], $body['description'], $id);
+            $status = (string) ($body['status'] ?? 'Pending');
+            $desc = (string) ($body['description'] ?? '');
+            $stmt = $db->prepare(
+                "UPDATE payments SET amount=?, payment_method=?, status=?, description=?,
+                 payment_date = CASE
+                    WHEN ? IN ('Paid','Partial') THEN IFNULL(payment_date, CURDATE())
+                    ELSE NULL
+                 END WHERE id=?"
+            );
+            $stmt->bind_param('dssssi', $amount, $pm, $status, $desc, $status, $id);
         }
         if (!$stmt->execute()) {
             payments_fail_execute($db, $stmt);
