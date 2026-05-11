@@ -15,11 +15,30 @@ let listFilterTab = 'today';
 /** When listFilterTab === 'day', list is filtered to this YYYY-MM-DD (local calendar; never use toISOString() for dates). */
 let pickedDayYmd = null;
 let tabListData = [];
+/** Snapshot when opening Edit Appointment — used to require internal change reason when slot fields change. */
+let editApptBaseline = null;
 
-const TAB_ACTIVE_CLASS =
-    'list-filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-[#22ccb2] text-white shadow-sm';
-const TAB_INACTIVE_CLASS =
-    'list-filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 border-primary text-primary bg-white hover:bg-primary/5';
+const CHANGE_REASON_LABELS = {
+    schedule_conflict: 'Schedule / slot conflict',
+    dentist_availability: 'Dentist availability',
+    patient_request: 'Patient requested change',
+    clinic_operations: 'Clinic operations',
+    record_correction: 'Record correction',
+    other: 'Other',
+};
+
+function formatChangeReasonLabel(code) {
+    if (!code) {
+        return '—';
+    }
+    return CHANGE_REASON_LABELS[code] || String(code);
+}
+
+/** Top stat cards: shared base + active / idle tail (full className set in setActiveStatCards). */
+const STAT_FILTER_BASE =
+    'stat-filter-card group w-full bg-white rounded-2xl p-4 shadow-sm text-center border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50';
+const STAT_FILTER_ACTIVE = ' border-primary bg-primary/10 ring-1 ring-primary/20 shadow-md';
+const STAT_FILTER_IDLE = ' border-transparent hover:border-primary/35 hover:shadow-md';
 
 const PROC_COLORS = {
     cleaning: 'bg-primary/20 text-primary',
@@ -177,6 +196,20 @@ function escapeHtml(s) {
     const div = document.createElement('div');
     div.textContent = s;
     return div.innerHTML;
+}
+
+/** Relative URL from admin/ for a stored portal GCash proof path (validated). */
+function portalPaymentProofUrl(rel) {
+    const clean = String(rel || '')
+        .trim()
+        .replace(/^\/*/, '')
+        .replace(/\\/g, '/');
+    if (
+        !/^assets\/uploads\/portal_gcash\/gcash_\d+_[a-f0-9]{16}\.(jpg|jpeg|png|webp)$/i.test(clean)
+    ) {
+        return '';
+    }
+    return '../' + clean.split('/').map(encodeURIComponent).join('/');
 }
 
 function formatMultilineText(s) {
@@ -407,33 +440,48 @@ async function loadTabCounts() {
     try {
         const c = await api.get('appointments.php', { count_by_status: 1 });
         const map = [
-            ['tabCountToday', c.today],
-            ['tabCountUpcoming', c.upcoming],
-            ['tabCountCompleted', c.completed],
-            ['tabCountCancelled', c.cancelled],
+            ['statToday', c.today],
+            ['statUpcoming', c.upcoming],
+            ['statCompleted', c.completed],
+            ['statCancelled', c.cancelled],
         ];
         map.forEach(([id, n]) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = '(' + Number(n) + ')';
+            if (el) el.textContent = String(Number(n));
         });
     } catch (e) {
         console.error(e);
     }
 }
 
-function setActiveTab() {
-    const tabs = [
-        ['tabFilterToday', 'today'],
-        ['tabFilterUpcoming', 'upcoming'],
-        ['tabFilterCompleted', 'completed'],
-        ['tabFilterCancelled', 'cancelled'],
+function setActiveStatCards() {
+    const cards = [
+        ['statCardToday', 'today'],
+        ['statCardUpcoming', 'upcoming'],
+        ['statCardCompleted', 'completed'],
+        ['statCardCancelled', 'cancelled'],
     ];
-    tabs.forEach(([bid, key]) => {
-        const btn = document.getElementById(bid);
+    cards.forEach(([id, key]) => {
+        const btn = document.getElementById(id);
         if (!btn) return;
         const active = listFilterTab === key;
-        btn.className = active ? TAB_ACTIVE_CLASS : TAB_INACTIVE_CLASS;
+        btn.className = STAT_FILTER_BASE + (active ? STAT_FILTER_ACTIVE : STAT_FILTER_IDLE);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+}
+
+/** Query params shared by list fetches (server applies dentist + search so filters match the table). */
+function appendListQueryParams(params) {
+    const dFil = document.getElementById('dentistFilter');
+    const df = dFil && dFil.value ? String(dFil.value).trim() : '';
+    if (df) {
+        params.dentist_id = df;
+    }
+    const searchEl = document.getElementById('searchInput');
+    const q = searchEl && searchEl.value ? String(searchEl.value).trim() : '';
+    if (q) {
+        params.search = q;
+    }
 }
 
 function updateListTitleForTab() {
@@ -462,7 +510,9 @@ async function loadTabList() {
         '<tr><td colspan="6" class="px-5 py-10 text-center text-gray-400"><i class="fas fa-spinner fa-spin text-primary text-xl mb-2 block"></i>Loading…</td></tr>';
     try {
         if (listFilterTab === 'day' && pickedDayYmd) {
-            tabListData = await api.get('appointments.php', { date: pickedDayYmd });
+            const dayParams = { date: pickedDayYmd };
+            appendListQueryParams(dayParams);
+            tabListData = await api.get('appointments.php', dayParams);
             const todayStr = todayYMDLocal();
             if (pickedDayYmd === todayStr) {
                 document.getElementById('listTitle').textContent = "Today's Appointments";
@@ -471,13 +521,15 @@ async function loadTabList() {
                 document.getElementById('listTitle').textContent = `Appointments — ${formatDateYMD(pickedDayYmd)}`;
                 document.getElementById('listBadge').textContent = formatDateYMD(pickedDayYmd);
             }
-            setActiveTab();
+            setActiveStatCards();
             renderApptTable(tabListData);
             return;
         }
-        tabListData = await api.get('appointments.php', { filter: listFilterTab });
+        const listParams = { filter: listFilterTab };
+        appendListQueryParams(listParams);
+        tabListData = await api.get('appointments.php', listParams);
         updateListTitleForTab();
-        setActiveTab();
+        setActiveStatCards();
         renderApptTable(tabListData);
     } catch (e) {
         showToast('Failed to load appointments: ' + e.message, 'error');
@@ -525,13 +577,13 @@ async function loadAllAppts() {
     }
 }
 
-document.querySelectorAll('#listFilterTabs .list-filter-tab').forEach((btn) => {
+document.querySelectorAll('#statFilterStrip .stat-filter-card').forEach((btn) => {
     btn.addEventListener('click', async () => {
         const f = btn.getAttribute('data-filter');
         if (!f || weekMode) return;
         pickedDayYmd = null;
         listFilterTab = f;
-        setActiveTab();
+        setActiveStatCards();
         await loadTabList();
     });
 });
@@ -645,16 +697,16 @@ function getMonday(d) {
 function toggleDayWeekList() {
     const dayWrap = document.getElementById('dayListWrap');
     const weekWrap = document.getElementById('weekListWrap');
-    const tabs = document.getElementById('listFilterTabs');
+    const statStrip = document.getElementById('statFilterStrip');
     if (!dayWrap || !weekWrap) return;
     if (weekMode) {
         dayWrap.classList.add('hidden');
         weekWrap.classList.remove('hidden');
-        if (tabs) tabs.classList.add('hidden');
+        if (statStrip) statStrip.classList.add('hidden');
     } else {
         dayWrap.classList.remove('hidden');
         weekWrap.classList.add('hidden');
-        if (tabs) tabs.classList.remove('hidden');
+        if (statStrip) statStrip.classList.remove('hidden');
     }
 }
 
@@ -740,18 +792,7 @@ async function renderWeekView() {
 // ── List (filter tabs) ────────────────────────────────────────────────────
 
 function renderApptTable(source) {
-    const dFilter = document.getElementById('dentistFilter').value;
-    const q = document.getElementById('searchInput').value.toLowerCase();
     let data = Array.isArray(source) ? source : [];
-    if (dFilter) data = data.filter((a) => String(a.dentist_id) === dFilter);
-    if (q) {
-        data = data.filter(
-            (a) =>
-                (a.patient_name || '').toLowerCase().includes(q) ||
-                (a.procedure_name || '').toLowerCase().includes(q) ||
-                (a.dentist_name || '').toLowerCase().includes(q)
-        );
-    }
     data = [...data].sort((a, b) => {
         const dc = (a.appointment_date || '').localeCompare(b.appointment_date || '');
         if (dc !== 0) return dc;
@@ -759,10 +800,18 @@ function renderApptTable(source) {
     });
 
     if (data.length === 0) {
+        const emptyByFilter = {
+            today: 'No appointments for today in this view.',
+            upcoming: 'No upcoming appointments match this view.',
+            completed: 'No completed appointments match this view.',
+            cancelled: 'No cancelled appointments match this view.',
+            day: 'No appointments for this day.',
+        };
+        const msg = emptyByFilter[listFilterTab] || 'No appointments for this view.';
         document.getElementById('apptTable').innerHTML =
             `<tr><td colspan="6" class="px-5 py-12 text-center text-gray-400">
                 <i class="fas fa-calendar-times text-3xl mb-3 block text-gray-200"></i>
-                No appointments for this view.
+                ${msg}
              </td></tr>`;
         return;
     }
@@ -771,7 +820,7 @@ function renderApptTable(source) {
             (a) => `
         <tr class="hover:bg-neutral/40 transition-colors ${a.status === 'In Progress' ? 'border-l-4 border-primary' : ''}">
             <td class="px-5 py-3.5">
-                <p class="text-sm font-semibold ${a.status === 'In Progress' ? 'text-primary' : 'text-secondary'}">${formatTime(a.appointment_time)}</p>
+                <p class="text-sm font-semibold ${a.status === 'In Progress' ? 'text-primary' : 'text-secondary'}">${formatDate(a.appointment_date)} <span class="text-gray-400 font-normal">·</span> ${formatTime(a.appointment_time)}</p>
                 <p class="text-xs text-gray-400">${a.duration_minutes || 30} min</p>
             </td>
             <td class="px-5 py-3.5">
@@ -812,17 +861,43 @@ async function viewAppt(id) {
         viewingId = id;
         const paySt = a.payment_status ? escapeHtml(String(a.payment_status)) : '—';
         const spec = a.dentist_specialization ? escapeHtml(String(a.dentist_specialization)) : '—';
+        const proofUrl = portalPaymentProofUrl(a.payment_proof_path);
+        const proofBlock =
+            proofUrl !== ''
+                ? `<div class="mt-2 p-2 sm:p-2.5 rounded-lg border border-neutral-dark/70 bg-white">
+                <p class="text-[11px] font-semibold text-gray-500 mb-1.5">Payment proof (patient upload)</p>
+                <a href="${escapeHtml(proofUrl)}" target="_blank" rel="noopener noreferrer" class="block text-center">
+                    <img src="${escapeHtml(proofUrl)}" alt="GCash payment proof" class="max-h-52 sm:max-h-64 w-auto max-w-full rounded-md border border-neutral-dark mx-auto object-contain bg-neutral" loading="lazy" decoding="async" />
+                </a>
+                <p class="text-[10px] text-gray-500 mt-1.5 text-center">Open in new tab to zoom for verification.</p>
+            </div>`
+                : '';
         document.getElementById('detailContent').innerHTML = `
-            <div class="grid grid-cols-2 gap-3">
-                <div class="p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Patient</p><p class="font-semibold text-secondary">${escapeHtml(a.patient_name)}</p></div>
-                <div class="p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Procedure</p><p class="font-semibold text-secondary">${escapeHtml(a.procedure_name)}</p></div>
-                <div class="p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Date</p><p class="font-semibold text-secondary">${formatDateYMD(a.appointment_date)}</p></div>
-                <div class="p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Time</p><p class="font-semibold text-secondary">${formatTime(a.appointment_time)} · ${a.duration_minutes} min</p></div>
-                <div class="p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Dentist</p><p class="font-semibold text-secondary">${escapeHtml(a.dentist_name)}</p></div>
-                <div class="p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Specialization</p><p class="font-semibold text-secondary">${spec}</p></div>
-                <div class="p-3 bg-neutral rounded-xl col-span-2"><p class="text-xs text-gray-400 mb-0.5">Payment</p><p class="font-semibold text-secondary">${paySt}</p></div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-0.5">Patient</p><p class="text-sm font-semibold text-secondary leading-snug">${escapeHtml(a.patient_name)}</p></div>
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-0.5">Procedure</p><p class="text-sm font-semibold text-secondary leading-snug">${escapeHtml(a.procedure_name)}</p></div>
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-0.5">Date</p><p class="text-sm font-semibold text-secondary">${formatDateYMD(a.appointment_date)}</p></div>
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-0.5">Time</p><p class="text-sm font-semibold text-secondary">${formatTime(a.appointment_time)} · ${a.duration_minutes} min</p></div>
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-0.5">Dentist</p><p class="text-sm font-semibold text-secondary leading-snug">${escapeHtml(a.dentist_name)}</p></div>
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-0.5">Specialization</p><p class="text-sm font-semibold text-secondary leading-snug">${spec}</p></div>
+                <div class="p-2 sm:p-2.5 bg-neutral rounded-lg col-span-2"><p class="text-[11px] text-gray-400 mb-0.5">Payment</p><p class="text-sm font-semibold text-secondary">${paySt}</p></div>
             </div>
-            ${a.notes ? `<div class="mt-3 p-3 bg-neutral rounded-xl"><p class="text-xs text-gray-400 mb-0.5">Notes</p><p class="text-sm text-secondary">${formatMultilineText(a.notes)}</p></div>` : ''}`;
+            ${proofBlock}
+            ${a.notes ? `<div class="mt-2 p-2 sm:p-2.5 bg-neutral rounded-lg"><p class="text-[11px] text-gray-400 mb-1">Notes</p><div class="text-xs sm:text-sm text-secondary leading-relaxed">${formatMultilineText(a.notes)}</div></div>` : ''}
+            ${
+                a.internal_change_reason
+                    ? `<div class="mt-2 p-2 sm:p-2.5 rounded-lg border border-amber-200 bg-amber-50">
+                        <p class="text-[11px] font-semibold text-amber-900 mb-0.5">Last schedule change (internal)</p>
+                        <p class="text-xs sm:text-sm text-amber-950">${escapeHtml(formatChangeReasonLabel(a.internal_change_reason))}</p>
+                        ${
+                            a.slot_modified_at
+                                ? `<p class="text-[11px] text-amber-800 mt-0.5">${escapeHtml(String(a.slot_modified_at))}</p>`
+                                : ''
+                        }
+                    </div>`
+                    : ''
+            }
+        `;
 
         const statuses = ['Scheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
         document.getElementById('statusButtons').innerHTML = statuses
@@ -881,6 +956,15 @@ document.getElementById('newApptBtn').addEventListener('click', async () => {
     setAppointmentDateMin(true);
     const firstProc = buildProcedureOptionsFromServices()[0];
     setModalSelectValues('', '', (firstProc && firstProc.value) || PROCEDURE_OPTIONS[0].value);
+    const crwNew = document.getElementById('apptChangeReasonWrap');
+    if (crwNew) {
+        crwNew.classList.add('hidden');
+    }
+    const fcrNew = document.getElementById('fChangeReason');
+    if (fcrNew) {
+        fcrNew.value = '';
+    }
+    editApptBaseline = null;
     openModal('apptModal');
     loadDentistBookedSlots('');
     loadAdminAvailabilitySlots();
@@ -931,6 +1015,21 @@ async function editAppt(id) {
         document.getElementById('fNotes').value = a.notes || '';
         clearApptConflictError();
         setAppointmentDateMin(false);
+        const crw = document.getElementById('apptChangeReasonWrap');
+        if (crw) {
+            crw.classList.remove('hidden');
+        }
+        const fcr = document.getElementById('fChangeReason');
+        if (fcr) {
+            fcr.value = '';
+        }
+        editApptBaseline = {
+            patient_id: String(a.patient_id ?? ''),
+            dentist_id: String(a.dentist_id ?? ''),
+            appointment_date: String(a.appointment_date || ''),
+            appointment_time: (a.appointment_time || '').slice(0, 5),
+            procedure_name: String(a.procedure_name || '').trim(),
+        };
         openModal('apptModal');
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
@@ -965,6 +1064,30 @@ document.getElementById('apptForm').addEventListener('submit', async function (e
     const btn = document.getElementById('saveApptBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Saving…';
+
+    if (id && editApptBaseline) {
+        const procName = String(parts[0] || raw || '').trim();
+        const slotChanged =
+            String(editApptBaseline.appointment_date) !== String(body.appointment_date) ||
+            String(editApptBaseline.appointment_time) !== String(body.appointment_time) ||
+            String(editApptBaseline.dentist_id) !== String(body.dentist_id) ||
+            String(editApptBaseline.patient_id) !== String(body.patient_id) ||
+            String(editApptBaseline.procedure_name).trim().toLowerCase() !== procName.toLowerCase();
+        if (slotChanged) {
+            const crEl = document.getElementById('fChangeReason');
+            const code = crEl && crEl.value ? String(crEl.value).trim() : '';
+            if (!code) {
+                showToast(
+                    'Select a reason for this schedule change. It is saved for clinic records only (patients do not see it).',
+                    'error'
+                );
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-1.5"></i> Save Appointment';
+                return;
+            }
+            body.change_reason = code;
+        }
+    }
 
     if (!body.appointment_time) {
         showToast('Please choose an available time slot.', 'error');
@@ -1039,7 +1162,7 @@ async function goToToday() {
     weekMode = false;
     pickedDayYmd = null;
     listFilterTab = 'today';
-    setActiveTab();
+    setActiveStatCards();
     updateWeekBtnStyle();
     toggleDayWeekList();
     selDate = new Date();
@@ -1084,13 +1207,13 @@ document.getElementById('nextMonth').addEventListener('click', () => {
 });
 document.getElementById('dentistFilter').addEventListener('change', () => {
     if (weekMode) renderWeekView();
-    else renderApptTable(tabListData);
+    else loadTabList();
 });
 document.getElementById('searchInput').addEventListener(
     'input',
     debounce(() => {
         if (weekMode) renderWeekView();
-        else renderApptTable(tabListData);
+        else loadTabList();
     }, 300)
 );
 

@@ -158,6 +158,129 @@
         return d.innerHTML;
     }
 
+    function showCashlessAppointmentQr(method, qrPath) {
+        if (!qrPath || !String(qrPath).trim()) {
+            return false;
+        }
+        const v = String(method || '').toLowerCase().trim();
+        if (!v || v === 'cash') {
+            return false;
+        }
+        return true;
+    }
+
+    function buildAppointmentDetailsHtml(d) {
+        const spec = d.dentist_specialization ? escapeHtml(String(d.dentist_specialization)) : '—';
+        const addr = d.clinic_address ? escapeHtml(String(d.clinic_address)) : '—';
+        const parts = [];
+        parts.push('<p><span class="font-medium text-[#2c3e50]">Specialization:</span> ' + spec + '</p>');
+        parts.push('<p class="mt-1"><span class="font-medium text-[#2c3e50]">Clinic address:</span> ' + addr + '</p>');
+        if (d.clinic_updated_at && String(d.clinic_updated_at).trim()) {
+            parts.push(
+                '<p class="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">' +
+                '<span class="font-semibold">The clinic updated this visit.</span> ' +
+                'Check the date and time shown on this card.</p>'
+            );
+        }
+
+        const idStr = String(d.id || '');
+        const isAdminMirror = idStr.indexOf('a') === 0;
+        const hh = d.health_history && typeof d.health_history === 'object' ? d.health_history : null;
+        const pd = d.patient_details && typeof d.patient_details === 'object' ? d.patient_details : null;
+
+        if (isAdminMirror && d.notes && String(d.notes).trim()) {
+            const lines = String(d.notes).split(/\r?\n/).map(function (ln) {
+                return escapeHtml(ln);
+            }).join('<br>');
+            parts.push('<p class="mt-2 font-medium text-[#2c3e50]">Booking details</p>');
+            parts.push('<div class="mt-1 text-gray-700">' + lines + '</div>');
+        } else {
+            if (hh && Array.isArray(hh.concerns) && hh.concerns.length) {
+                const lis = hh.concerns.map(function (c) {
+                    return '<li>' + escapeHtml(String(c)) + '</li>';
+                }).join('');
+                parts.push('<p class="mt-2 font-medium text-[#2c3e50]">Dental concerns</p>');
+                parts.push('<ul class="mt-1 list-disc pl-5 text-gray-700">' + lis + '</ul>');
+            }
+            if (pd) {
+                const street = [pd.street, pd.city, pd.state, pd.country, pd.postal_code]
+                    .map(function (x) { return x != null ? String(x).trim() : ''; })
+                    .filter(Boolean);
+                if (street.length) {
+                    parts.push(
+                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Patient address:</span> ' +
+                        escapeHtml(street.join(', ')) + '</p>'
+                    );
+                }
+            }
+            if (hh) {
+                if (hh.medical_conditions && String(hh.medical_conditions).trim()) {
+                    parts.push(
+                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Medical:</span> ' +
+                        escapeHtml(String(hh.medical_conditions).trim()) + '</p>'
+                    );
+                }
+                if (hh.ongoing_treatments === 'yes' && hh.ongoing_details && String(hh.ongoing_details).trim()) {
+                    parts.push(
+                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Ongoing treatments:</span> ' +
+                        escapeHtml(String(hh.ongoing_details).trim()) + '</p>'
+                    );
+                }
+                if (hh.allergies === 'yes') {
+                    const al = hh.allergies_specify && String(hh.allergies_specify).trim()
+                        ? String(hh.allergies_specify).trim()
+                        : 'Yes';
+                    parts.push(
+                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Allergies:</span> ' +
+                        escapeHtml(al) + '</p>'
+                    );
+                }
+                if (hh.special_requests && String(hh.special_requests).trim()) {
+                    parts.push(
+                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Special requests:</span> ' +
+                        escapeHtml(String(hh.special_requests).trim()) + '</p>'
+                    );
+                }
+            }
+        }
+
+        if (d.payment_method && String(d.payment_method).trim()) {
+            parts.push(
+                '<p class="mt-2"><span class="font-medium text-[#2c3e50]">Payment method:</span> ' +
+                escapeHtml(String(d.payment_method).trim()) + '</p>'
+            );
+        }
+        if (d.payment_reference && String(d.payment_reference).trim()) {
+            parts.push(
+                '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Payment reference:</span> ' +
+                escapeHtml(String(d.payment_reference).trim()) + '</p>'
+            );
+        }
+        if (d.payment_proof_path && String(d.payment_proof_path).trim()) {
+            const rel = String(d.payment_proof_path).replace(/^\/*/, '');
+            const url = '../../' + rel.split('/').map(encodeURIComponent).join('/');
+            parts.push(
+                '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Payment proof:</span> ' +
+                '<a href="' + escapeHtml(url) + '" class="font-semibold text-[#22ccb2] hover:text-[#1bab96]" target="_blank" rel="noopener">View uploaded file</a></p>'
+            );
+        }
+
+        if (showCashlessAppointmentQr(d.payment_method, d.cashless_payment_qr_path)) {
+            const rel = String(d.cashless_payment_qr_path).replace(/^\/*/, '');
+            const url = '../../' + rel.split('/').map(encodeURIComponent).join('/');
+            parts.push(
+                '<p class="mt-2 font-medium text-[#2c3e50]">Scan to pay</p>' +
+                '<div class="mt-1"><img src="' + escapeHtml(url) + '" alt="Clinic payment QR" class="max-w-[220px] rounded border border-gray-200 bg-white p-2" loading="lazy" decoding="async" width="220" height="220" /></div>'
+            );
+        }
+
+        const paySt = d.payment_status ? escapeHtml(String(d.payment_status)) : '—';
+        parts.push(
+            '<p class="mt-2"><span class="font-medium text-[#2c3e50]">Payment status:</span> ' + paySt + '</p>'
+        );
+        return parts.join('');
+    }
+
     function showActionError(msg) {
         const e = document.getElementById('actionError');
         e.textContent = msg;
@@ -200,6 +323,9 @@
                 ? '<button type="button" class="cancel-appt w-full shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 sm:w-auto" data-id="' + id + '">Cancel</button>'
                 : '';
             const dentistNm = escapeHtml(a.dentist_name || '—');
+            const clinicUpdated = a.clinic_updated_at && String(a.clinic_updated_at).trim()
+                ? '<span class="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-900">Updated by clinic</span>'
+                : '';
             return (
                 '<article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-appt-card="' + id + '">' +
                 '<div class="flex flex-wrap items-start justify-between gap-3">' +
@@ -207,12 +333,13 @@
                 '<p class="text-base font-semibold text-[#2c3e50]">' + escapeHtml(dateStr) + '</p>' +
                 '<p class="mt-1 text-sm text-gray-600">' + escapeHtml(timeStr) + '</p>' +
                 '</div>' +
-                '<div class="flex flex-wrap gap-2">' +
+                '<div class="flex flex-wrap items-end justify-end gap-2">' +
                 '<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ' + statusClass + '">' + statusLabel + '</span>' +
+                clinicUpdated +
                 '</div></div>' +
                 '<p class="mt-2 text-sm text-gray-700"><span class="font-medium text-[#2c3e50]">Dentist:</span> ' + dentistNm + '</p>' +
                 '<p class="mt-1 text-sm text-gray-700"><span class="font-medium text-[#2c3e50]">Procedure:</span> ' + reason + '</p>' +
-                '<div class="mt-4 flex w-full flex-col gap-3 sm:mt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">' +
+                '<div class="mt-2 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">' +
                 '<button type="button" class="inline-flex shrink-0 text-left text-sm font-semibold text-[#22ccb2] hover:text-[#1bab96] appt-details-btn" data-appt-id="' + id + '">View details</button>' +
                 cancelBtn +
                 '</div>' +
@@ -237,15 +364,7 @@
                     const res = await fetch(APPT_API + '?id=' + encodeURIComponent(apptId), { credentials: 'same-origin', cache: 'no-store' });
                     const d = await res.json().catch(function () { return {}; });
                     if (!res.ok) throw new Error(d.error || 'Could not load');
-                    const addr = d.clinic_address ? escapeHtml(String(d.clinic_address)) : '—';
-                    const spec = d.dentist_specialization ? escapeHtml(String(d.dentist_specialization)) : '—';
-                    const notes = d.notes ? escapeHtml(String(d.notes)) : '—';
-                    const pay = d.payment_status ? escapeHtml(String(d.payment_status)) : '—';
-                    panel.innerHTML =
-                        '<p><span class="font-medium text-[#2c3e50]">Specialization:</span> ' + spec + '</p>' +
-                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Clinic address:</span> ' + addr + '</p>' +
-                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Notes:</span> ' + notes + '</p>' +
-                        '<p class="mt-1"><span class="font-medium text-[#2c3e50]">Payment status:</span> ' + pay + '</p>';
+                    panel.innerHTML = buildAppointmentDetailsHtml(d);
                     panel.dataset.loaded = '1';
                 } catch (e) {
                     panel.innerHTML = '<p class="text-red-600">Could not load details.</p>';

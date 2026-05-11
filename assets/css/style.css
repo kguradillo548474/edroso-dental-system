@@ -136,6 +136,140 @@ input.input-file-styled:disabled::-webkit-file-upload-button {
     background-color: #1bab96;
 }
 
+/* Payment modal save — same issue: ensure teal background + white label always paint */
+#savePaymentBtn {
+    background-color: #22ccb2 !important;
+    color: #fff !important;
+    border: 1px solid #1bab96;
+}
+#savePaymentBtn:hover:not(:disabled) {
+    background-color: #1bab96 !important;
+    color: #fff !important;
+}
+#savePaymentBtn:disabled {
+    opacity: 0.85;
+    cursor: not-allowed;
+    color: #fff !important;
+}
+
+/* Payments page — hex fallbacks so teal / amber / slate match dashboard when Tailwind misses utilities */
+.page-payments .payments-btn-primary {
+    background-color: #22ccb2;
+    color: #fff;
+}
+.page-payments .payments-btn-primary:hover {
+    background-color: #1bab96;
+    color: #fff;
+}
+.page-payments .payments-stat-collected {
+    color: #22ccb2;
+}
+.page-payments .payments-stat-pending {
+    color: #f39c12;
+}
+.page-payments .payments-stat-total {
+    color: #2c3e50;
+}
+.page-payments .payments-icon-primary {
+    color: #22ccb2;
+}
+.page-payments .payments-icon-accent {
+    color: #f39c12;
+}
+.page-payments .payments-icon-blue {
+    color: #3b82f6;
+}
+
+/* ── Admin shell (sidebar + top header): hex fallbacks so every board matches even when Tailwind CDN skips `primary` utilities (often noticed on Payments). */
+.admin-sidebar-logo {
+    background-color: #22ccb2;
+}
+.admin-sidebar-logo-icon {
+    color: #ffffff;
+}
+.admin-sidebar-brand-name {
+    color: #2c3e50;
+}
+.admin-sidebar-brand-accent {
+    color: #22ccb2;
+}
+.admin-sidebar-brand-row {
+    border-bottom-color: #e3e8ef;
+}
+
+.admin-header-title-accent {
+    background-color: #22ccb2;
+}
+.admin-header-title,
+.admin-header-user-name {
+    color: #2c3e50;
+}
+.admin-header-icon {
+    color: #2c3e50;
+}
+.admin-header-user-avatar {
+    background-color: rgba(34, 204, 178, 0.22);
+    color: #1bab96;
+}
+
+/*
+ * Admin shell — Chrome flex + wide tables: zero-width #sidebarMount in flow; #main-content flex-1 min-w-0.
+ * Do not require a JS-only body class (so layout works even if initSidebar runs late).
+ * body.admin-sidebar-collapsed-desktop toggles padding + sidebar visibility (hamburger in initSidebar).
+ * #mainHeader sits above #sidebar (z-index) so the menu button is never covered by the fixed rail.
+ */
+body.min-h-screen.flex:has(#main-content) > #sidebarMount {
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    overflow: visible;
+    position: relative;
+    min-height: 100vh;
+}
+body.min-h-screen.flex:has(#main-content) > #main-content {
+    flex: 1 1 0%;
+    min-width: 0;
+    width: auto !important;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+body.min-h-screen.flex:has(#main-content) #main-content > main {
+    min-width: 0;
+}
+body.min-h-screen.flex:has(#main-content) #mainHeader {
+    z-index: 40;
+}
+body.min-h-screen.flex:has(#main-content) #sidebar {
+    z-index: 30;
+}
+@media (min-width: 768px) {
+    body.min-h-screen.flex:has(#main-content):not(.admin-sidebar-collapsed-desktop) > #main-content {
+        margin-left: 0 !important;
+        padding-left: 16rem;
+    }
+    body.min-h-screen.flex:has(#main-content).admin-sidebar-collapsed-desktop > #main-content {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+    }
+    body.min-h-screen.flex:has(#main-content):not(.admin-sidebar-collapsed-desktop) #mainHeader {
+        left: 16rem;
+        right: 0;
+        width: auto !important;
+        max-width: none;
+    }
+    body.min-h-screen.flex:has(#main-content).admin-sidebar-collapsed-desktop #mainHeader {
+        left: 0;
+        right: 0;
+        width: auto !important;
+        max-width: none;
+    }
+    /* Tailwind md:translate-x-0 beats -translate-x-full; force hide when desktop-collapsed */
+    body.min-h-screen.flex.admin-sidebar-collapsed-desktop:has(#main-content) #sidebar {
+        transform: translateX(-100%) !important;
+    }
+}
+
 /* Admin mobile touch targets */
 @media (max-width: 640px) {
     button,

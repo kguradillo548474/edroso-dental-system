@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     room VARCHAR(50),
     status ENUM('Scheduled','Confirmed','In Progress','Completed','Cancelled') DEFAULT 'Scheduled',
     notes TEXT,
+    internal_change_reason VARCHAR(64) NULL DEFAULT NULL,
+    slot_modified_at DATETIME NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_appointment_date (appointment_date),
     INDEX idx_status (status),
@@ -158,10 +160,11 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- SEED DATA
 -- =====================
 
--- Admin user (password: admin123)
+-- Admin user (password: password — bcrypt below)
 INSERT INTO users (username, password, full_name, role) VALUES
 ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin User', 'admin'),
-('edroso', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Alex Edroso', 'admin');
+('edroso', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dr. Alex Edroso', 'admin'),
+('staff', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Clinic Reception', 'staff');
 
 -- Dentists
 INSERT INTO dentists (name, specialization, email, phone, satisfaction_rate) VALUES

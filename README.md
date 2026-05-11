@@ -2,6 +2,26 @@
 
 Full-stack **PHP + MySQL** web application for clinic staff and patients: admin workflows, public marketing site, and a logged-in **patient portal** (register, book, view/cancel appointments).
 
+### Changelog (2026-05-11)
+
+This release aligns **staff admin**, **APIs**, **portal booking**, and **documentation** with the current tree. Highlights:
+
+| Area | What changed |
+|------|----------------|
+| **Core schema location** | Primary import file is **`sql/database.sql`** (root `database.sql` removed). Fresh installs should import that file first. |
+| **`includes/db.php`** | Optional **`includes/config.php`** can define `DB_*` and `APP_ENV`. Sessions use **strict mode** and tightened cookie params (`Secure` when HTTPS, `SameSite=Lax`, `HttpOnly`). JSON APIs send **same-host CORS** (`Access-Control-Allow-Origin` only when `Origin` matches the request host) with credentials, plus security headers and **OPTIONS** handling. |
+| **Staff credential recovery** | **`api/auth.php`**: `staff_recovery_request` / `staff_recovery_reset` — OTP-based **forgot password** (by username) and **forgot username** (by unique staff full name), rate-limited, **staff role only**. Creates **`credential_recovery_challenges`** and writes **`admin_staff_alerts`** rows (schema ensured on use). **`admin/login.html`** exposes the recovery UI. Optional SQL: **`sql/upgrade_staff_recovery_alerts.sql`** (also seeds demo user `staff` / `password` if missing). |
+| **Login audit log** | **`includes/auth_login_log.php`** — append-only **`auth_login_log`** (realms `staff` / `portal`) with IP and user agent; table auto-created on first log attempt. Staff and portal logins call **`log_auth_login_attempt`**. **`api/auth_logs.php`** lists entries for logged-in staff (`?realm=` filter). **`admin/auth-logs.html`** + sidebar **Login activity** (`assets/js/layout.js`). Reference DDL: **`sql/auth_login_log.sql`**. |
+| **In-app staff alerts** | **`api/admin_alerts.php`** — list unread/read **`admin_staff_alerts`**, mark read (CSRF on POST). **Dashboard** (`admin/dashboard.html`) can surface recent alerts. |
+| **Admin layout** | **`assets/css/style.css`** + **`assets/js/app.js`**: fixed sidebar vs main column (Chrome flex), header **z-index** above sidebar, desktop **`admin-sidebar-collapsed-desktop`**, deferred **`setTimeout(0)`** second **`initSidebar()`** pass, **`window.initAdminSidebar()`** for late-injected chrome. See **Admin shell** under Tech stack. |
+| **Appointments (staff)** | **`api/appointments.php`**: optional columns **`internal_change_reason`** / **`slot_modified_at`**; staff edits that change slot sync linked **portal** rows; conflict helpers; session-scoped **portal→admin backfill** via **`includes/portal_admin_sync.php`**. **`assets/js/appointments.js`** + **`admin/appointments.html`**: summary stat cards act as **list filters** (today / upcoming / completed / cancelled). |
+| **Portal booking & payments** | **`api/patient_appointments.php`** + **`sql/patient_appointments.sql`**: **`payment_reference`**, **`payment_proof_path`**, staff metadata columns; **GCash proof** upload (`?action=upload_gcash_proof`), transactional booking paths, stricter GCash validation where configured. **`customer-site/portal/book.html`**, **`book.js`**, **`dashboard.html`** updated for the flow. |
+| **Clinic / portal settings** | **`api/settings.php`**: admin **cashless payment QR** upload/clear (`upload_cashless_payment_qr`, `clear_cashless_payment_qr` → **`assets/uploads/payment_qr/`**), **`portal_referral_sources`**, **`auto_logout_minutes`** (surfaced on `auth.php?action=me`). **`api/portal_options.php`** exposes **`cashless_payment_qr_path`** and referral list to the portal. **`admin/settings.html`** extended for new controls. |
+| **Other API / UI** | **`api/dashboard.php`**, **`api/backup.php`**, **`api/payments.php`**, **`api/services.php`**, **`api/patient_auth.php`** — incremental fixes. **`includes/portal_booking_mirror.php`** — small sync adjustments. Marketing **`login.html` / `register.html` / `service.html` / `services.html`** — minor link or copy tweaks. |
+| **Performance (optional SQL)** | **`sql/add_appointment_indexes.sql`** — suggested indexes on **`appointments`** and **`patient_appointments`** date/status columns (run manually if tables already exist). |
+
+Runtime upload directories (gitignored or local): **`assets/uploads/payment_qr/`**, **`assets/uploads/portal_gcash/`**.
+
 ---
 
 ## How the system fits together
@@ -57,9 +77,9 @@ Portal bookings live in **`patient_appointments`** and can be **mirrored** into 
 
 ### Staff day-to-day
 
-1. Open **Admin login** → session created.
-2. **Dashboard** — quick stats and recent activity.
-3. **Appointments** — create/edit/cancel; filter by dentist; list ties to `appointments` + patients + dentists.
+1. Open **Admin login** → session created (optional **forgot password / username** recovery for **staff** accounts via OTP on the login page).
+2. **Dashboard** — quick stats, recent activity, and **staff alerts** when credential recovery or similar events occur.
+3. **Appointments** — create/edit/cancel; filter by dentist; **click stat cards** to filter by today / upcoming / completed / cancelled; list ties to `appointments` + patients + dentists.
 4. **Patients / Dentists / Payments / Settings** — maintain master data and clinic settings.
 
 ### Patient: discover → account → book
@@ -86,12 +106,15 @@ Optional **security question at registration** (`register.html`): recommended fo
 
 ```
 edroso-dental-system/
-├── admin/                      ← Staff UI (login, dashboard, appointments, …)
+├── admin/                      ← Staff UI (login, dashboard, appointments, auth-logs, …)
 ├── api/
-│   ├── auth.php                ← Staff login / session (users)
+│   ├── auth.php                ← Staff login / session / recovery / me (auto_logout)
+│   ├── auth_logs.php           ← Staff: login audit log (JSON)
+│   ├── admin_alerts.php        ← Staff: in-app alerts
 │   ├── patient_auth.php        ← Portal register / login / logout / forgot / reset / recovery
-│   ├── patient_appointments.php ← Portal bookings, lists, cancel, availability
+│   ├── patient_appointments.php ← Portal bookings, lists, cancel, availability, GCash proof
 │   ├── appointments.php        ← Staff appointments API
+│   ├── portal_options.php      ← Public portal booking options (payments, QR path, referrals)
 │   ├── patients.php, dentists.php, payments.php, dashboard.php, settings.php, …
 │   └── …
 ├── assets/                     ← Staff app JS/CSS
@@ -103,15 +126,17 @@ edroso-dental-system/
 │       ├── dashboard.html, book.html, profile.html, settings.html
 │       ├── reset-password.html
 │       └── …
-├── includes/                   ← db.php, csrf.php, validation, portal mirror/sync helpers
+├── includes/                   ← db.php, config.php (optional), csrf.php, auth_login_log.php, portal mirror/sync helpers
 ├── sql/
+│   ├── database.sql            ← Core clinic schema (run first)
 │   ├── portal_users.sql        ← portal_users (run after core DB)
 │   ├── portal_recovery_columns.sql ← optional manual ALTER for recovery columns
 │   ├── patient_appointments.sql
+│   ├── auth_login_log.sql      ← optional manual CREATE for login audit table
+│   ├── upgrade_staff_recovery_alerts.sql ← staff OTP recovery + admin_staff_alerts + demo staff user
 │   ├── upgrade_edroso_features.sql, upgrade_tc063_payment_method.sql, …
 │   └── add_appointment_indexes.sql
 ├── tools/                      ← e.g. sync_portal_to_admin.php
-├── database.sql                ← Core clinic schema (run first)
 ├── .gitignore
 └── README.md
 ```
@@ -128,7 +153,7 @@ edroso-dental-system/
 
 ### Step 1 — Core database
 
-1. Open **phpMyAdmin** → **Import** → `database.sql` → **Go**  
+1. Open **phpMyAdmin** → **Import** → **`sql/database.sql`** → **Go**  
 2. Creates `edroso_dental`, staff tables, and sample data where included.
 
 ### Step 2 — Patient portal tables
@@ -142,11 +167,15 @@ On database **`edroso_dental`**, in order:
 
 Optional: `sql/portal_recovery_columns.sql` — only if you prefer to add **`recovery_question`** / **`recovery_answer_hash`** manually (otherwise the API adds them).
 
+Optional: `sql/auth_login_log.sql` — manual **`auth_login_log`** table (otherwise created on first staff/portal login attempt).
+
+Optional: `sql/upgrade_staff_recovery_alerts.sql` — **`credential_recovery_challenges`**, **`admin_staff_alerts`**, and demo **`staff`** user (`password`) for testing OTP recovery.
+
 Other `sql/upgrade_*.sql` files apply optional schema tweaks; read each file’s comments before running.
 
 ### Step 3 — Configure database access
 
-Edit **`includes/db.php`**:
+Either add **`includes/config.php`** defining `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, and optional `APP_ENV`, **or** rely on the fallbacks in **`includes/db.php`**:
 
 ```php
 define('DB_HOST', 'localhost');
@@ -166,6 +195,7 @@ Keep secrets out of Git (`.env` is ignored if you introduce one); do not commit 
 | Area | Example URL |
 |------|----------------|
 | Staff login | `http://localhost/edroso-dental-system/admin/login.html` |
+| Staff login activity (after login) | `…/admin/auth-logs.html` |
 | Customer home | `http://localhost/edroso-dental-system/customer-site/index.html` |
 | Register | `…/customer-site/register.html` |
 | Login | `…/customer-site/login.html` |
@@ -184,6 +214,8 @@ Keep secrets out of Git (`.env` is ignored if you introduce one); do not commit 
 | `admin`  | `password` | Admin |
 | `edroso` | `password` | Admin |
 
+If you ran **`sql/upgrade_staff_recovery_alerts.sql`**, a demo **`staff`** / **`password`** user may also exist for reception-style testing.
+
 Change passwords in production.
 
 ---
@@ -192,13 +224,14 @@ Change passwords in production.
 
 | Module | Features |
 |--------|----------|
-| **Dashboard** | Stats, funnel, recent appointments |
+| **Dashboard** | Stats, funnel, recent appointments; staff **alerts** strip when present |
 | **Patients** | CRUD, search, filters, pagination |
-| **Appointments** | List/calendar, CRUD, dentist filters; ties to main `appointments` |
+| **Appointments** | List/calendar, CRUD, dentist filters; **stat-card filters**; portal row sync on slot edits; ties to main `appointments` |
 | **Dentists** | Profiles, photos, schedules |
 | **Payments** | CRUD, stats, filters |
-| **Settings** | Clinic configuration |
-| **Auth** | Session-based staff login via `api/auth.php` |
+| **Settings** | Clinic configuration; **cashless QR** upload; portal referral list; session **auto-logout** minutes |
+| **Login activity** | Read-only audit of staff + portal sign-in attempts (`api/auth_logs.php`) |
+| **Auth** | Session-based staff login via `api/auth.php`; **OTP recovery** for staff; login **audit log** |
 
 ---
 
@@ -214,7 +247,7 @@ Change passwords in production.
 
 ### Booking and dashboard
 
-- **`portal/book.html`** — date/time/dentist, submits to **`api/patient_appointments.php`** (JSON). Requires portal session.
+- **`portal/book.html`** — date/time/dentist, submits to **`api/patient_appointments.php`** (JSON). Requires portal session. When **GCash** is selected, the flow can require a **reference** and/or **proof-of-payment** upload (`upload_gcash_proof`), depending on clinic options.
 - **`portal/dashboard.html`** — lists portal rows + matching staff appointments; cancel where allowed.
 
 ### Password and recovery (`api/patient_auth.php`)
@@ -239,8 +272,11 @@ Change passwords in production.
 
 | File | Role |
 |------|------|
-| `api/patient_auth.php` | Auth, profile, password, recovery, CSRF |
-| `api/patient_appointments.php` | Availability, create booking, list by status, cancel; merges admin appointments for linked patients |
+| `api/patient_auth.php` | Auth, profile, password, recovery, CSRF; writes **`auth_login_log`** on portal login |
+| `api/patient_appointments.php` | Availability, create booking, list by status, cancel; GCash proof upload; merges admin appointments for linked patients |
+| `api/auth_logs.php` | Staff-only: paginated **`auth_login_log`** (`?realm=staff` \| `portal`) |
+| `api/admin_alerts.php` | Staff: list / mark-read **`admin_staff_alerts`** |
+| `api/portal_options.php` | Public (no staff session): payment methods, referral sources, optional **cashless QR** path for booking UI |
 
 ---
 
@@ -249,6 +285,16 @@ Change passwords in production.
 - **Staff & customer UI:** HTML5, Tailwind CDN, vanilla JS, Inter (customer site)
 - **Backend:** PHP + MySQLi, JSON `respond()` APIs
 - **Auth:** PHP sessions — separate session keys for staff vs portal
+
+### Admin shell (layout & sidebar)
+
+Staff pages under `admin/` share a fixed **sidebar** (`#sidebar`) and **main column** (`#main-content`) with a top bar (`#mainHeader`) and hamburger control (`#sidebar-toggle`). Layout is **Tailwind classes + extra rules** in `assets/css/style.css` so Chrome/Edge flex behavior stays predictable (for example `min-w-0` on the main column where needed).
+
+- **Desktop:** The menu button toggles **`body.admin-sidebar-collapsed-desktop`**. CSS ensures the sidebar can slide fully off-screen even when Tailwind’s `md:translate-x-0` would otherwise win.
+- **Mobile (narrow viewports):** The same button opens/closes a drawer; **`#sidebarBackdrop`** closes the drawer when tapped.
+- **Stacking:** The header is given a higher stacking order than the fixed sidebar so the hamburger stays clickable when panels overlap during transitions.
+
+**JavaScript (`assets/js/app.js`):** `initSidebar()` wires the toggle, resize behavior, and initial widths. It only sets `document.body.dataset.adminSidebarBound` after both `#sidebar` and `#main-content` exist, so a first pass that runs before the DOM is ready does not “lock” a broken state. A **`setTimeout(..., 0)`** after `DOMContentLoaded` runs `initSidebar()` again if binding never completed (for example when another script injects the chrome in its own `DOMContentLoaded` handler). If you inject sidebar/header **later** (e.g. after `fetch`), call **`window.initAdminSidebar()`** once right after the HTML is in the document.
 
 ---
 
@@ -277,6 +323,9 @@ User must set it at **register** or in **Portal → Settings** while logged in.
 
 **Access denied (MySQL)**  
 Grant privileges, e.g. `GRANT ALL ON edroso_dental.* TO 'root'@'localhost';`
+
+**Admin sidebar overlaps content or hamburger does nothing**  
+Hard-refresh the staff page (`Ctrl+F5`) so `assets/css/style.css` and `assets/js/app.js` reload. Confirm the page includes both `#sidebar` and `#main-content`. If the shell is injected asynchronously, call `window.initAdminSidebar()` after injection.
 
 ---
 

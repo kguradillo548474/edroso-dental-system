@@ -103,3 +103,16 @@ function requireAuth() {
         respond(['error' => 'Unauthorized. Please log in.', 'redirect' => 'login.html'], 401);
     }
 }
+
+/** Normalized staff/admin role from session (defaults to admin for legacy rows). */
+function sessionUserRole(): string {
+    $r = strtolower(trim((string) ($_SESSION['role'] ?? 'admin')));
+    return $r === 'staff' ? 'staff' : 'admin';
+}
+
+function requireAdminSession(): void {
+    requireAuth();
+    if (sessionUserRole() !== 'admin') {
+        respond(['error' => 'This action requires an administrator.', 'code' => 'admin_only'], 403);
+    }
+}

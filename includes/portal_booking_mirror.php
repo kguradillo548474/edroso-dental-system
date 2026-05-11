@@ -292,6 +292,14 @@ if (!function_exists('portal_status_to_admin')) {
         if ($pm !== '') {
             $notesParts[] = 'Payment: ' . $pm;
         }
+        $pref = trim((string) ($body['payment_reference'] ?? ''));
+        if ($pref !== '') {
+            $notesParts[] = 'Payment ref: ' . $pref;
+        }
+        $proof = trim((string) ($body['payment_proof_path'] ?? ''));
+        if ($proof !== '') {
+            $notesParts[] = 'Payment proof: ' . $proof;
+        }
         $notes = implode("\n", $notesParts);
         $stmt->bind_param(
             'iissssisss',

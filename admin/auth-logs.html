@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login activity — Edroso Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#22ccb2','primary-dark':'#1bab96',secondary:'#2c3e50',accent:'#f39c12',neutral:'#f5f7fa','neutral-dark':'#e3e8ef'}}}}</script>
+</head>
+<body class="font-sans bg-neutral min-h-screen flex" style="font-family:'Inter',sans-serif">
+<div id="sidebarMount"></div>
+<div class="ml-64 w-[calc(100%-16rem)]" id="main-content">
+    <div id="headerMount"></div>
+    <main class="pt-20 px-6 pb-10">
+        <p class="text-sm text-gray-600 mb-4 max-w-3xl">
+            Sign-in attempts for <strong>staff</strong> (admin app) and <strong>patient portal</strong> (customer site).
+            Failed rows help spot wrong passwords or unknown accounts; they do not store passwords.
+        </p>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+            <label class="text-sm text-gray-600">Filter</label>
+            <select id="realmFilter" class="pl-3 pr-8 py-2 rounded-xl border border-neutral-dark bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="">All</option>
+                <option value="staff">Staff only</option>
+                <option value="portal">Patient portal only</option>
+            </select>
+            <button type="button" id="refreshBtn" class="px-4 py-2 rounded-xl border border-neutral-dark bg-white text-sm font-medium hover:bg-neutral/80">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-neutral-dark text-left text-xs font-semibold text-gray-400 uppercase tracking-wider bg-neutral/60">
+                            <th class="px-4 py-3">Time</th>
+                            <th class="px-4 py-3">Realm</th>
+                            <th class="px-4 py-3">Identifier</th>
+                            <th class="px-4 py-3">Result</th>
+                            <th class="px-4 py-3">User ID</th>
+                            <th class="px-4 py-3">IP</th>
+                            <th class="px-4 py-3 min-w-[200px]">User agent</th>
+                            <th class="px-4 py-3">Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logBody" class="divide-y divide-neutral-dark">
+                        <tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-4 py-3 border-t border-neutral-dark flex justify-between items-center bg-neutral/30">
+                <button type="button" id="loadMoreBtn" class="text-sm font-medium text-primary hover:text-primary-dark disabled:opacity-50">Load older</button>
+                <span class="text-xs text-gray-500" id="logMeta"></span>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../assets/js/layout.js"></script>
+<script src="../assets/js/app.js"></script>
+<script>
+document.getElementById('sidebarMount').innerHTML = getSidebarHTML('auth_logs');
+document.getElementById('headerMount').innerHTML  = getHeaderHTML('Login activity');
+
+function escHtml(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+let logOffset = 0;
+const LOG_PAGE = 80;
+
+async function loadLogs(reset) {
+    const tbody = document.getElementById('logBody');
+    const realm = document.getElementById('realmFilter').value;
+    if (reset) {
+        logOffset = 0;
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">Loading…</td></tr>';
+    }
+    const params = { action: 'list', limit: LOG_PAGE, offset: logOffset };
+    if (realm) params.realm = realm;
+    try {
+        const data = await api.get('auth_logs.php', params);
+        const rows = data.logs || [];
+        const html = rows.length === 0 && logOffset === 0
+            ? '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">No login attempts recorded yet. Successful and failed sign-ins will appear here.</td></tr>'
+            : rows.map(function (r) {
+                const ok = parseInt(r.success, 10) === 1;
+                const badge = ok
+                    ? '<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Success</span>'
+                    : '<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700">Failed</span>';
+                const t = r.created_at ? new Date(r.created_at.replace(' ', 'T')).toLocaleString() : '—';
+                return '<tr class="hover:bg-neutral/40">' +
+                    '<td class="px-4 py-2.5 whitespace-nowrap text-gray-700">' + escHtml(t) + '</td>' +
+                    '<td class="px-4 py-2.5"><span class="font-medium text-secondary">' + escHtml(r.realm) + '</span></td>' +
+                    '<td class="px-4 py-2.5 font-mono text-xs">' + escHtml(r.identifier) + '</td>' +
+                    '<td class="px-4 py-2.5">' + badge + '</td>' +
+                    '<td class="px-4 py-2.5 text-gray-600">' + (r.user_id != null ? escHtml(String(r.user_id)) : '—') + '</td>' +
+                    '<td class="px-4 py-2.5 font-mono text-xs text-gray-600">' + escHtml(r.ip_address || '—') + '</td>' +
+                    '<td class="px-4 py-2.5 text-xs text-gray-500 max-w-xs truncate" title="' + escHtml(r.user_agent || '') + '">' + escHtml(r.user_agent || '—') + '</td>' +
+                    '<td class="px-4 py-2.5 text-xs text-gray-600">' + escHtml(r.detail || '—') + '</td>' +
+                    '</tr>';
+            }).join('');
+        if (reset) {
+            tbody.innerHTML = html;
+        } else if (rows.length) {
+            tbody.insertAdjacentHTML('beforeend', html);
+        }
+        document.getElementById('loadMoreBtn').disabled = rows.length < LOG_PAGE;
+        document.getElementById('logMeta').textContent = rows.length
+            ? ('Showing ' + (logOffset + rows.length) + ' newest rows' + (rows.length < LOG_PAGE ? ' (end)' : ''))
+            : '';
+        logOffset += rows.length;
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-red-600">' + escHtml(e.message || 'Error') + '</td></tr>';
+    }
+}
+
+document.getElementById('realmFilter').addEventListener('change', function () { loadLogs(true); });
+document.getElementById('refreshBtn').addEventListener('click', function () { loadLogs(true); });
+document.getElementById('loadMoreBtn').addEventListener('click', function () { loadLogs(false); });
+
+(async function () {
+    await checkAuth();
+    await loadLogs(true);
+})();
+</script>
+</body>
+</html>

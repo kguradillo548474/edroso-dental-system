@@ -391,6 +391,10 @@ if ($isServiceCatalogGet) {
 
 requireAuth();
 
+if (sessionUserRole() === 'staff' && $method !== 'GET') {
+    respond(['error' => 'Only administrators can change the service catalog.', 'code' => 'admin_only'], 403);
+}
+
 $db = getDB();
 
 ensureServicesTable($db);

@@ -9,6 +9,13 @@ if (empty($_SESSION['user_id'])) {
     exit;
 }
 
+if (sessionUserRole() !== 'admin') {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Database backup is only available to administrators.';
+    exit;
+}
+
 $db = getDB();
 $dbName = DB_NAME;
 

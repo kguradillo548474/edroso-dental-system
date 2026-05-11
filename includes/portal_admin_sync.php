@@ -98,6 +98,8 @@ function portal_mirror_body_from_patient_appointment_row(array $pa): array {
         'patient_details' => $pd,
         'health_history' => $hh,
         'payment_method' => (string) ($pa['payment_method'] ?? ''),
+        'payment_reference' => trim((string) ($pa['payment_reference'] ?? '')),
+        'payment_proof_path' => trim((string) ($pa['payment_proof_path'] ?? '')),
         'portal_status' => (string) ($pa['status'] ?? 'pending'),
     ];
 }

@@ -66,7 +66,24 @@ if (!$referral_sources) {
     $referral_sources = $defaultReferrals;
 }
 
+$cashless_payment_qr_path = null;
+$qrStmt = $db->prepare('SELECT `value` FROM settings WHERE `key` = ? LIMIT 1');
+if ($qrStmt) {
+    $qrKey = 'cashless_payment_qr_path';
+    $qrStmt->bind_param('s', $qrKey);
+    $qrStmt->execute();
+    $qrRow = $qrStmt->get_result()->fetch_assoc();
+    $qrStmt->close();
+    if ($qrRow && isset($qrRow['value'])) {
+        $qv = trim((string) $qrRow['value']);
+        if ($qv !== '') {
+            $cashless_payment_qr_path = $qv;
+        }
+    }
+}
+
 respond([
-    'payment_methods'  => $payment_methods,
-    'referral_sources' => $referral_sources,
+    'payment_methods'           => $payment_methods,
+    'referral_sources'          => $referral_sources,
+    'cashless_payment_qr_path'   => $cashless_payment_qr_path,
 ]);

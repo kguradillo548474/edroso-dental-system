@@ -33,6 +33,10 @@ function ensure_patient_appointments_table(mysqli $db): void {
         patient_details JSON,
         health_history JSON,
         payment_method VARCHAR(50),
+        payment_reference VARCHAR(191) NULL DEFAULT NULL,
+        payment_proof_path VARCHAR(500) NULL DEFAULT NULL,
+        staff_updated_at TIMESTAMP NULL DEFAULT NULL,
+        staff_update_reason_code VARCHAR(64) NULL DEFAULT NULL,
         status ENUM('pending','scheduled','completed','cancelled') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_preferred_date (preferred_date),
@@ -63,8 +67,72 @@ function ensure_patient_appointments_dentist_id_column(mysqli $db): void {
     $done = true;
 }
 
+/**
+ * GCash proof: reference text and/or uploaded screenshot path (relative to site root).
+ */
+function ensure_patient_appointments_payment_proof_columns(mysqli $db): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $c0 = @$db->query("SHOW COLUMNS FROM patient_appointments LIKE 'payment_reference'");
+    if ($c0 && $c0->num_rows === 0) {
+        @$db->query(
+            'ALTER TABLE patient_appointments ADD COLUMN payment_reference VARCHAR(191) NULL DEFAULT NULL AFTER payment_method'
+        );
+    }
+    if ($c0) {
+        $c0->free();
+    }
+    $c1 = @$db->query("SHOW COLUMNS FROM patient_appointments LIKE 'payment_proof_path'");
+    if ($c1 && $c1->num_rows === 0) {
+        @$db->query(
+            'ALTER TABLE patient_appointments ADD COLUMN payment_proof_path VARCHAR(500) NULL DEFAULT NULL AFTER payment_reference'
+        );
+    }
+    if ($c1) {
+        $c1->free();
+    }
+    $done = true;
+}
+
+/**
+ * Staff reschedule audit (reason code is never exposed on the patient portal).
+ */
+function ensure_patient_appointments_staff_update_columns(mysqli $db): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $c0 = @$db->query("SHOW COLUMNS FROM patient_appointments LIKE 'staff_updated_at'");
+    if ($c0 && $c0->num_rows === 0) {
+        @$db->query(
+            'ALTER TABLE patient_appointments ADD COLUMN staff_updated_at TIMESTAMP NULL DEFAULT NULL AFTER payment_proof_path'
+        );
+    }
+    if ($c0) {
+        $c0->free();
+    }
+    $c1 = @$db->query("SHOW COLUMNS FROM patient_appointments LIKE 'staff_update_reason_code'");
+    if ($c1 && $c1->num_rows === 0) {
+        @$db->query(
+            'ALTER TABLE patient_appointments ADD COLUMN staff_update_reason_code VARCHAR(64) NULL DEFAULT NULL AFTER staff_updated_at'
+        );
+    }
+    if ($c1) {
+        $c1->free();
+    }
+    $done = true;
+}
+
+function portal_payment_method_is_gcash(string $pm): bool {
+    return stripos(trim($pm), 'gcash') !== false;
+}
+
 ensure_patient_appointments_table(getDB());
 ensure_patient_appointments_dentist_id_column(getDB());
+ensure_patient_appointments_payment_proof_columns(getDB());
+ensure_patient_appointments_staff_update_columns(getDB());
 
 function walk_in_seat_limit(mysqli $db): int {
     $default = 10;
@@ -359,6 +427,7 @@ function admin_appointment_to_portal_list_row(
         'dentist_name'             => $ap['dentist_name'] ?? null,
         'dentist_specialization'   => $ap['dentist_specialization'] ?? null,
         'procedure_name'           => $proc !== '' ? $proc : 'Appointment',
+        'clinic_updated_at'        => !empty($ap['slot_modified_at']) ? $ap['slot_modified_at'] : null,
     ];
 }
 
@@ -491,6 +560,90 @@ if ($method === 'POST' && ($_GET['action'] ?? '') === 'cancel') {
     respond(['success' => true]);
 }
 
+// ── POST multipart ?action=upload_gcash_proof (portal session) ────────────
+if ($method === 'POST' && ($_GET['action'] ?? '') === 'upload_gcash_proof') {
+    require_portal_session();
+    $uid = (int) $_SESSION['portal_user_id'];
+    if (!isset($_FILES['proof']) || !is_array($_FILES['proof'])) {
+        respond(['error' => 'No file uploaded'], 400);
+    }
+    $err = (int) ($_FILES['proof']['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($err !== UPLOAD_ERR_OK) {
+        respond(['error' => 'Upload failed (code ' . $err . ')'], 400);
+    }
+    $tmp = (string) ($_FILES['proof']['tmp_name'] ?? '');
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        respond(['error' => 'Invalid upload'], 400);
+    }
+    $maxBytes = 5 * 1024 * 1024;
+    $size = (int) ($_FILES['proof']['size'] ?? 0);
+    if ($size <= 0 || $size > $maxBytes) {
+        respond(['error' => 'File must be under 5 MB'], 400);
+    }
+    $mime = '';
+    if (function_exists('finfo_open')) {
+        $fi = finfo_open(FILEINFO_MIME_TYPE);
+        if ($fi) {
+            $mime = (string) finfo_file($fi, $tmp);
+            finfo_close($fi);
+        }
+    }
+    $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if (!isset($allowed[$mime])) {
+        respond(['error' => 'Allowed types: JPEG, PNG, WebP'], 400);
+    }
+    $ext = $allowed[$mime];
+    $destDir = __DIR__ . '/../assets/uploads/portal_gcash';
+    if (!is_dir($destDir)) {
+        if (!@mkdir($destDir, 0755, true)) {
+            respond(['error' => 'Could not create upload directory'], 500);
+        }
+    }
+    $basename = 'gcash_' . $uid . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+    $destPath = $destDir . DIRECTORY_SEPARATOR . $basename;
+    if (!@move_uploaded_file($tmp, $destPath)) {
+        respond(['error' => 'Could not save file'], 500);
+    }
+    $webPath = 'assets/uploads/portal_gcash/' . $basename;
+    respond(['success' => true, 'path' => $webPath]);
+}
+
+/**
+ * Remove internal staff-only fields; expose clinic_updated_at for UI badge only.
+ *
+ * @param array<string,mixed> $row
+ * @return array<string,mixed>
+ */
+function portal_sanitize_appointment_row_for_patient(array $row): array {
+    unset($row['staff_update_reason_code'], $row['internal_change_reason']);
+    if (!empty($row['staff_updated_at'])) {
+        $row['clinic_updated_at'] = $row['staff_updated_at'];
+    } else {
+        $row['clinic_updated_at'] = null;
+    }
+    unset($row['staff_updated_at']);
+    return $row;
+}
+
+function portal_payment_method_from_notes(string $notes): string {
+    foreach (preg_split("/\r\n|\n|\r/", $notes) as $line) {
+        $line = trim($line);
+        if (preg_match('/^Payment:\s*(.+)$/i', $line, $m)) {
+            return trim($m[1]);
+        }
+    }
+    return '';
+}
+
+function portal_cashless_payment_qr_from_settings(mysqli $db): ?string {
+    $res = @$db->query("SELECT `value` FROM settings WHERE `key` = 'cashless_payment_qr_path' LIMIT 1");
+    if ($res && ($r = $res->fetch_assoc())) {
+        $v = trim((string) ($r['value'] ?? ''));
+        return $v !== '' ? $v : null;
+    }
+    return null;
+}
+
 // ── GET ?id=N or id=aN — single appointment detail (portal session) ──────
 if ($method === 'GET' && isset($_GET['id']) && $_GET['id'] !== '') {
     require_portal_session();
@@ -537,7 +690,7 @@ if ($method === 'GET' && isset($_GET['id']) && $_GET['id'] !== '') {
             'meeting_type'           => 'in_person',
             'patient_details'        => null,
             'health_history'         => null,
-            'payment_method'         => null,
+            'payment_method'         => '',
             'status'                 => map_admin_status_to_portal_status((string) ($ap['status'] ?? '')),
             'created_at'             => $ap['created_at'] ?? null,
             'dentist_name'           => $ap['dentist_name'] ?? null,
@@ -563,7 +716,12 @@ if ($method === 'GET' && isset($_GET['id']) && $_GET['id'] !== '') {
             }
         }
 
-        $row['notes'] = trim((string) ($ap['notes'] ?? ''));
+        $notesStr = trim((string) ($ap['notes'] ?? ''));
+        $row['notes'] = $notesStr;
+        $row['payment_method'] = portal_payment_method_from_notes($notesStr);
+        $row['cashless_payment_qr_path'] = portal_cashless_payment_qr_from_settings($db);
+        $row['clinic_updated_at'] = !empty($ap['slot_modified_at']) ? $ap['slot_modified_at'] : null;
+        unset($row['internal_change_reason']);
         respond($row);
     }
 
@@ -631,7 +789,9 @@ if ($method === 'GET' && isset($_GET['id']) && $_GET['id'] !== '') {
     $rr  = trim((string) ($row['reason'] ?? ''));
     $row['notes'] = $rln !== '' ? $rln : ($rr !== '' ? $rr : '');
 
-    respond($row);
+    $row['cashless_payment_qr_path'] = portal_cashless_payment_qr_from_settings($db);
+
+    respond(portal_sanitize_appointment_row_for_patient($row));
 }
 
 // ── GET ?date=YYYY-MM-DD&dentist_id=N (server-generated time slots, per dentist) ─
@@ -703,6 +863,7 @@ if ($method === 'GET' && isset($_GET['user_id'], $_GET['status'])) {
         $rl = isset($r['reason_label']) ? trim((string) $r['reason_label']) : '';
         $rn = isset($r['reason']) ? trim((string) $r['reason']) : '';
         $r['procedure_name'] = $rl !== '' ? $rl : $rn;
+        $r = portal_sanitize_appointment_row_for_patient($r);
     }
     unset($r);
 
@@ -795,6 +956,33 @@ if ($method === 'POST') {
     $consent = !empty($body['consent']);
     if (!$consent) {
         respond(['error' => 'Consent is required'], 400);
+    }
+
+    $payment_reference = trim((string) ($body['payment_reference'] ?? ''));
+    $payment_proof_path = trim((string) ($body['payment_proof_path'] ?? ''));
+    if (portal_payment_method_is_gcash($payment_method)) {
+        if ($payment_reference === '' && $payment_proof_path === '') {
+            respond(
+                [
+                    'error' => 'GCash payments require a transaction reference number and/or an uploaded proof of payment.',
+                    'field' => 'payment_reference',
+                ],
+                422
+            );
+        }
+        if (strlen($payment_reference) > 191) {
+            respond(['error' => 'Payment reference is too long'], 422);
+        }
+        if ($payment_proof_path !== '') {
+            if (
+                !preg_match(
+                    '#^assets/uploads/portal_gcash/gcash_\d+_[a-f0-9]{16}\.(jpg|png|webp)$#i',
+                    $payment_proof_path
+                )
+            ) {
+                respond(['error' => 'Invalid payment proof file. Please upload again.'], 422);
+            }
+        }
     }
 
     $patient_details = $body['patient_details'] ?? null;
@@ -948,12 +1136,12 @@ if ($method === 'POST') {
         // ── Insert booking ──────────────────────────────────────────────
         $stmt = $db->prepare(
             'INSERT INTO patient_appointments
-             (portal_user_id, dentist_id, preferred_date, preferred_time, reason, service_id, reason_label, meeting_type, patient_details, health_history, payment_method, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             (portal_user_id, dentist_id, preferred_date, preferred_time, reason, service_id, reason_label, meeting_type, patient_details, health_history, payment_method, payment_reference, payment_proof_path, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $statusIns = 'pending';
         $stmt->bind_param(
-            'iississsssss',
+            'iisssissssssss',
             $portal_user_id,
             $dentist_id,
             $date,
@@ -965,6 +1153,8 @@ if ($method === 'POST') {
             $pdJson,
             $hhJson,
             $payment_method,
+            $payment_reference,
+            $payment_proof_path,
             $statusIns
         );
         if (!$stmt->execute()) {
@@ -994,6 +1184,8 @@ if ($method === 'POST') {
             'patient_details' => $patient_details,
             'health_history' => $health_history,
             'payment_method' => $payment_method,
+            'payment_reference' => $payment_reference,
+            'payment_proof_path' => $payment_proof_path,
         ], $db);
     } catch (Throwable $e) {
         error_log('patient_appointments mirror exception: ' . $e->getMessage());

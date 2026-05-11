@@ -201,34 +201,52 @@ document.addEventListener('click', e => {
     }
 });
 
-// ── Sidebar toggle ────────────────────────────────────────────────────────
+// ── Sidebar toggle (Tailwind layout; CSS in style.css uses body.admin-* for Chrome flex fix) ─
 function initSidebar() {
-    const btn = document.getElementById('sidebar-toggle');
+    if (document.body.dataset.adminSidebarBound === '1') {
+        return;
+    }
+
     const sidebar = document.getElementById('sidebar');
     const main = document.getElementById('main-content');
-    const header = document.getElementById('mainHeader');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    if (!btn || !sidebar || !main) return;
+    if (!sidebar || !main) {
+        return;
+    }
+
+    document.body.dataset.adminSidebarBound = '1';
 
     let collapsedDesktop = false;
+
     function isMobile() {
         return window.matchMedia('(max-width: 767px)').matches;
     }
+
     function applyLayoutState() {
+        const header = document.getElementById('mainHeader');
+        const backdrop = document.getElementById('sidebarBackdrop');
+
         if (isMobile()) {
+            document.body.classList.remove('admin-sidebar-collapsed-desktop');
+            sidebar.classList.add('-translate-x-full');
             main.classList.remove('ml-64', 'w-[calc(100%-16rem)]');
             main.classList.add('ml-0', 'w-full');
             if (header) {
                 header.classList.remove('w-[calc(100%-16rem)]');
                 header.classList.add('w-full');
             }
-            const open = !sidebar.classList.contains('-translate-x-full');
-            if (backdrop) backdrop.classList.toggle('hidden', !open);
+            if (backdrop) {
+                backdrop.classList.add('hidden');
+            }
             return;
         }
-        sidebar.classList.remove('-translate-x-full');
-        if (backdrop) backdrop.classList.add('hidden');
+
+        document.body.classList.toggle('admin-sidebar-collapsed-desktop', collapsedDesktop);
+
+        if (backdrop) {
+            backdrop.classList.add('hidden');
+        }
         const hidden = collapsedDesktop;
+        sidebar.classList.toggle('-translate-x-full', hidden);
         main.classList.toggle('ml-64', !hidden);
         main.classList.toggle('w-[calc(100%-16rem)]', !hidden);
         main.classList.toggle('ml-0', hidden);
@@ -239,23 +257,44 @@ function initSidebar() {
         }
     }
 
-    btn.addEventListener('click', () => {
-        if (isMobile()) {
-            const opening = sidebar.classList.contains('-translate-x-full');
-            sidebar.classList.toggle('-translate-x-full', !opening);
-            if (backdrop) backdrop.classList.toggle('hidden', !opening);
+    document.addEventListener(
+        'click',
+        (e) => {
+            const btn = e.target.closest('#sidebar-toggle');
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const sb = document.getElementById('sidebar');
+            const bd = document.getElementById('sidebarBackdrop');
+            if (!sb) {
+                return;
+            }
+            if (isMobile()) {
+                const opening = sb.classList.contains('-translate-x-full');
+                sb.classList.toggle('-translate-x-full', !opening);
+                if (bd) {
+                    bd.classList.toggle('hidden', !opening);
+                }
+                return;
+            }
+            collapsedDesktop = !collapsedDesktop;
+            applyLayoutState();
+        },
+        true
+    );
+
+    document.addEventListener('click', (e) => {
+        const bd = e.target.closest('#sidebarBackdrop');
+        if (!bd || bd.classList.contains('hidden')) {
             return;
         }
-        collapsedDesktop = !collapsedDesktop;
-        applyLayoutState();
+        const sb = document.getElementById('sidebar');
+        if (sb) {
+            sb.classList.add('-translate-x-full');
+        }
+        bd.classList.add('hidden');
     });
-
-    if (backdrop) {
-        backdrop.addEventListener('click', () => {
-            sidebar.classList.add('-translate-x-full');
-            backdrop.classList.add('hidden');
-        });
-    }
 
     window.addEventListener('resize', applyLayoutState);
     applyLayoutState();
@@ -413,3 +452,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', e => { e.preventDefault(); logout(); })
     );
 });
+
+/* After all DOMContentLoaded handlers (e.g. inline layout inject), bind sidebar if the first pass missed. */
+setTimeout(function () {
+    if (document.body.dataset.adminSidebarBound !== '1') {
+        initSidebar();
+    }
+}, 0);
+
+/** Optional: call from a page script after late-injected sidebar/header HTML. */
+window.initAdminSidebar = initSidebar;

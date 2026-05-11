@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - Edroso Dental Clinic</title>
+    <title>Clinic Login - Edroso Dental Clinic</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -16,9 +16,10 @@
         <div class="w-full lg:w-1/2 p-10">
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">
-                    Admin Login
-                    <span class="ml-2 bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-medium align-middle">Staff Only</span>
+                    Clinic login
+                    <span class="ml-2 bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-medium align-middle">Admin &amp; staff</span>
                 </h1>
+                <p class="text-sm text-gray-500">Administrators have full access; staff use the same page with clinic credentials.</p>
             </div>
 
             <form id="loginForm" class="space-y-5">
@@ -46,7 +47,7 @@
                         <input type="checkbox" id="remember" class="h-4 w-4 text-primary border-gray-300 rounded mr-2">
                         Remember me
                     </label>
-                    <a href="#" class="text-sm text-gray-500 hover:text-primary hover:underline">Forgot Password?</a>
+                    <button type="button" id="openStaffRecovery" class="text-sm text-gray-500 hover:text-primary hover:underline">Forgot username or password? (staff)</button>
                 </div>
                 <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm flex items-center">
                     <i class="fas fa-exclamation-circle mr-2"></i>
@@ -61,8 +62,54 @@
             </form>
 
             <p class="mt-6 text-center text-xs text-gray-400">
-                Demo: username <strong>admin</strong> / password <strong>password</strong>
+                Demo: <strong>admin</strong> / <strong>password</strong> · staff <strong>staff</strong> / <strong>password</strong>
             </p>
+        </div>
+
+        <!-- Staff self-recovery (OTP + admin notification) -->
+        <div id="staffRecoveryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 relative">
+                <button type="button" id="closeStaffRecovery" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600" aria-label="Close">&times;</button>
+                <h2 class="text-lg font-semibold text-secondary mb-1">Staff account recovery</h2>
+                <p class="text-xs text-gray-500 mb-4">For <strong>staff</strong> accounts only. A one-time code is generated, and administrators are notified in the dashboard.</p>
+
+                <div id="recoveryStep1">
+                    <div class="flex gap-2 mb-4 text-sm">
+                        <button type="button" class="recovery-tab flex-1 py-2 rounded-lg border border-gray-200 font-medium bg-primary/10 border-primary text-secondary" data-tab="pw">I forgot my password</button>
+                        <button type="button" class="recovery-tab flex-1 py-2 rounded-lg border border-gray-200 text-gray-600" data-tab="user">I forgot my username</button>
+                    </div>
+                    <div id="recoveryForgotPwFields">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Username</label>
+                        <input type="text" id="recoveryUsername" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3" placeholder="Your staff username" autocomplete="username">
+                    </div>
+                    <div id="recoveryForgotUserFields" class="hidden">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Full name (as registered)</label>
+                        <input type="text" id="recoveryFullName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3" placeholder="e.g. Clinic Reception" autocomplete="name">
+                    </div>
+                    <div id="recoveryErr1" class="hidden mb-3 text-sm text-red-600"></div>
+                    <button type="button" id="recoveryRequestBtn" class="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-semibold">Get one-time code</button>
+                </div>
+
+                <div id="recoveryStep2" class="hidden">
+                    <p class="text-sm text-gray-700 mb-2" id="recoveryOtpHint"></p>
+                    <div class="rounded-lg bg-neutral border border-neutral-dark p-3 mb-3 text-center">
+                        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Your one-time code</p>
+                        <p class="text-3xl font-mono font-bold tracking-widest text-secondary" id="recoveryOtpDisplay">------</p>
+                        <p class="text-xs text-gray-500 mt-1">Valid 15 minutes. Do not share this code.</p>
+                    </div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Confirm code</label>
+                    <input type="text" id="recoveryOtpInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 font-mono" inputmode="numeric" maxlength="8" placeholder="6-digit code">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Username (for sign-in)</label>
+                    <input type="text" id="recoveryUsernameLocked" readonly class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-3 bg-gray-50 text-gray-700">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">New password</label>
+                    <input type="password" id="recoveryNewPw" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2" minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Confirm new password</label>
+                    <input type="password" id="recoveryNewPw2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3" minlength="8" autocomplete="new-password">
+                    <div id="recoveryErr2" class="hidden mb-3 text-sm text-red-600"></div>
+                    <button type="button" id="recoveryResetBtn" class="w-full py-2.5 bg-secondary hover:opacity-95 text-white rounded-lg text-sm font-semibold">Save new password</button>
+                    <button type="button" id="recoveryBackBtn" class="w-full mt-2 py-2 text-sm text-gray-500 hover:text-primary">Back</button>
+                </div>
+            </div>
         </div>
 
         <!-- Brand Panel -->
@@ -106,6 +153,109 @@
         });
 
         // Login
+        let recoveryMode = 'forgot_password';
+        let recoveryUsernameValue = '';
+
+        function openRecovery() {
+            document.getElementById('staffRecoveryModal').classList.remove('hidden');
+            document.getElementById('recoveryStep1').classList.remove('hidden');
+            document.getElementById('recoveryStep2').classList.add('hidden');
+            document.getElementById('recoveryErr1').classList.add('hidden');
+            document.getElementById('recoveryErr2').classList.add('hidden');
+        }
+        function closeRecovery() {
+            document.getElementById('staffRecoveryModal').classList.add('hidden');
+        }
+        document.getElementById('openStaffRecovery').addEventListener('click', function (e) {
+            e.preventDefault();
+            openRecovery();
+        });
+        document.getElementById('closeStaffRecovery').addEventListener('click', closeRecovery);
+        document.getElementById('staffRecoveryModal').addEventListener('click', function (e) {
+            if (e.target.id === 'staffRecoveryModal') closeRecovery();
+        });
+
+        document.querySelectorAll('.recovery-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                recoveryMode = btn.getAttribute('data-tab') === 'user' ? 'forgot_username' : 'forgot_password';
+                document.querySelectorAll('.recovery-tab').forEach(function (b) {
+                    const on = b.getAttribute('data-tab') === (recoveryMode === 'forgot_username' ? 'user' : 'pw');
+                    b.className = 'recovery-tab flex-1 py-2 rounded-lg border font-medium ' + (on
+                        ? 'border-primary bg-primary/10 text-secondary'
+                        : 'border-gray-200 text-gray-600 hover:bg-neutral-dark/30');
+                });
+                document.getElementById('recoveryForgotPwFields').classList.toggle('hidden', recoveryMode !== 'forgot_password');
+                document.getElementById('recoveryForgotUserFields').classList.toggle('hidden', recoveryMode !== 'forgot_username');
+            });
+        });
+
+        document.getElementById('recoveryRequestBtn').addEventListener('click', async function () {
+            const err = document.getElementById('recoveryErr1');
+            err.classList.add('hidden');
+            const body = { mode: recoveryMode, csrf_token: csrfToken };
+            if (recoveryMode === 'forgot_password') {
+                body.username = document.getElementById('recoveryUsername').value.trim();
+            } else {
+                body.full_name = document.getElementById('recoveryFullName').value.trim();
+            }
+            try {
+                const res = await fetch('../api/auth.php?action=staff_recovery_request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json().catch(function () { return {}; });
+                if (!res.ok) throw new Error(data.error || 'Request failed');
+                recoveryUsernameValue = data.username || '';
+                document.getElementById('recoveryOtpDisplay').textContent = data.otp || '------';
+                document.getElementById('recoveryUsernameLocked').value = recoveryUsernameValue;
+                document.getElementById('recoveryOtpInput').value = String(data.otp || '');
+                document.getElementById('recoveryOtpHint').textContent = data.message || 'Enter a new password below, then save.';
+                document.getElementById('recoveryStep1').classList.add('hidden');
+                document.getElementById('recoveryStep2').classList.remove('hidden');
+            } catch (ex) {
+                err.textContent = ex.message || 'Something went wrong.';
+                err.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('recoveryBackBtn').addEventListener('click', function () {
+            document.getElementById('recoveryStep2').classList.add('hidden');
+            document.getElementById('recoveryStep1').classList.remove('hidden');
+        });
+
+        document.getElementById('recoveryResetBtn').addEventListener('click', async function () {
+            const err = document.getElementById('recoveryErr2');
+            err.classList.add('hidden');
+            const body = {
+                username: document.getElementById('recoveryUsernameLocked').value.trim(),
+                otp: document.getElementById('recoveryOtpInput').value.trim(),
+                new_password: document.getElementById('recoveryNewPw').value,
+                confirm_password: document.getElementById('recoveryNewPw2').value,
+                csrf_token: csrfToken
+            };
+            try {
+                const res = await fetch('../api/auth.php?action=staff_recovery_reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json().catch(function () { return {}; });
+                if (!res.ok) throw new Error(data.error || 'Reset failed');
+                alert(data.message || 'Password updated. You can sign in now.');
+                closeRecovery();
+                document.getElementById('username').value = body.username;
+                document.getElementById('password').value = '';
+                document.getElementById('recoveryNewPw').value = '';
+                document.getElementById('recoveryNewPw2').value = '';
+            } catch (ex) {
+                err.textContent = ex.message || 'Something went wrong.';
+                err.classList.remove('hidden');
+            }
+        });
+
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const username = document.getElementById('username').value.trim();

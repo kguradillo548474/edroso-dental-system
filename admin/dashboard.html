@@ -17,6 +17,7 @@
         <div id="headerMount"></div>
 
         <main class="pt-20 px-6 pb-8">
+            <div id="adminAlertsMount" class="hidden mb-6"></div>
             <!-- Welcome Banner -->
             <div class="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-6 mb-6 text-white relative overflow-hidden">
                 <div class="relative z-10 flex justify-between items-start">
@@ -277,11 +278,59 @@
         });
     }
 
+    async function loadAdminAlerts() {
+        const box = document.getElementById('adminAlertsMount');
+        if (!box) return;
+        try {
+            const data = await api.get('admin_alerts.php', { limit: 15 });
+            const alerts = data.alerts || [];
+            const totalUnread = parseInt(data.unread_count, 10) || 0;
+            if (!alerts.length && totalUnread === 0) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            const rows = alerts.filter((a) => !a.is_read).slice(0, 5);
+            if (!rows.length) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <p class="font-semibold flex items-center gap-2"><i class="fas fa-bell text-amber-600"></i> Administrator notices (${totalUnread} unread)</p>
+                        <button type="button" id="dismissAdminAlerts" class="text-xs font-medium text-amber-900 underline hover:no-underline">Mark shown as read</button>
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1 text-amber-900/90">
+                        ${rows.map((a) => `<li>${String(a.message || '').replace(/</g, '&lt;')}</li>`).join('')}
+                    </ul>
+                </div>`;
+            document.getElementById('dismissAdminAlerts').addEventListener('click', async () => {
+                const ids = rows.map((a) => a.id);
+                try {
+                    await api.post('admin_alerts.php', { mark_read_ids: ids });
+                    showToast('Marked as read', 'success');
+                    box.classList.add('hidden');
+                    box.innerHTML = '';
+                } catch (e) {
+                    showToast(e.message || 'Could not update alerts', 'error');
+                }
+            });
+        } catch (_) {
+            box.classList.add('hidden');
+        }
+    }
+
     async function loadDashboard() {
         const user = await checkAuth();
         if (!user) return;
         document.getElementById('adminDashboardBody').classList.remove('hidden');
         document.getElementById('welcomeName').textContent = user.full_name || user.username;
+        if (user.role === 'admin') {
+            loadAdminAlerts();
+        }
 
         // Live clock
         function tick() {

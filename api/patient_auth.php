@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/validation.php';
+require_once __DIR__ . '/../includes/auth_login_log.php';
 
 /** Normalize security-answer input for hashing / verification (case-insensitive, trimmed). */
 function normalize_portal_recovery_answer(string $answer): string
@@ -461,7 +462,18 @@ if ($action === 'login') {
     }
     $stmt->close();
 
-    if (!$row || !password_verify($password, $row['password_hash'])) {
+    $valid = $row && password_verify($password, $row['password_hash']);
+    ensure_auth_login_log_table($db);
+    $detail = $valid ? 'login_ok' : ($row ? 'bad_password' : 'unknown_email');
+    log_auth_login_attempt($db, [
+        'realm'      => 'portal',
+        'identifier' => $email,
+        'success'    => $valid,
+        'user_id'    => $row ? (int) $row['id'] : null,
+        'detail'     => $detail,
+    ]);
+
+    if (!$valid) {
         respond(['error' => 'Invalid credentials.'], 401);
     }
     $password = '';

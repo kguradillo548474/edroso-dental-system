@@ -23,6 +23,99 @@
     let portalLastName = '';
     let csrfToken = '';
     let wizardStep = 1;
+    let portalCashlessQrPath = '';
+
+    function isGcashPaymentMethod() {
+        var el = document.getElementById('payment_method');
+        if (!el || !el.value) {
+            return false;
+        }
+        return String(el.value).toLowerCase().indexOf('gcash') >= 0;
+    }
+
+    function setPaymentProofMsg(msg, isErr) {
+        var st = document.getElementById('paymentProofStatus');
+        if (!st) {
+            return;
+        }
+        if (!msg) {
+            st.textContent = '';
+            st.classList.add('hidden');
+            return;
+        }
+        st.textContent = msg;
+        st.classList.remove('hidden');
+        st.style.color = isErr ? '#991b1b' : '#374151';
+    }
+
+    function updateGcashPaymentUi() {
+        var wrap = document.getElementById('gcashPaymentFields');
+        if (!wrap) {
+            return;
+        }
+        var on = isGcashPaymentMethod();
+        wrap.classList.toggle('hidden', !on);
+        if (!on) {
+            var hid = document.getElementById('payment_proof_path');
+            var fin = document.getElementById('payment_proof_file');
+            if (hid) {
+                hid.value = '';
+            }
+            if (fin) {
+                fin.value = '';
+            }
+            setPaymentProofMsg('', false);
+        }
+        updateScanToPayQr();
+    }
+
+    function showsCashlessBookingQr() {
+        if (!portalCashlessQrPath) {
+            return false;
+        }
+        var el = document.getElementById('payment_method');
+        if (!el || !el.value) {
+            return false;
+        }
+        var v = String(el.value).toLowerCase().trim();
+        if (v === 'cash') {
+            return false;
+        }
+        return true;
+    }
+
+    function updateScanToPayQr() {
+        var wrap = document.getElementById('scanToPayQrWrap');
+        var img = document.getElementById('scanToPayQrImg');
+        if (!wrap || !img) {
+            return;
+        }
+        if (showsCashlessBookingQr()) {
+            var rel = String(portalCashlessQrPath).replace(/^\/*/, '');
+            img.src = '../../' + rel;
+            wrap.classList.remove('hidden');
+        } else {
+            wrap.classList.add('hidden');
+            img.removeAttribute('src');
+        }
+    }
+
+    async function uploadGcashProofFile(file) {
+        var fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        fd.append('proof', file);
+        var res = await fetch(APPT_API + '?action=upload_gcash_proof', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+            credentials: 'same-origin',
+            body: fd
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success || !data.path) {
+            throw new Error((data && data.error) ? data.error : 'Upload failed');
+        }
+        return String(data.path);
+    }
 
     function setWizardStep(n) {
         wizardStep = n;
@@ -54,6 +147,8 @@
                 wizNext.classList.add('hidden');
                 btnSub.classList.remove('hidden');
                 refreshConfirmSummary();
+                updateGcashPaymentUi();
+                updateScanToPayQr();
             } else {
                 wizNext.classList.remove('hidden');
                 btnSub.classList.add('hidden');
@@ -787,6 +882,13 @@
         }
         if (!document.getElementById('medical_conditions').value.trim()) errs.push('Medical conditions field is required.');
         if (!document.getElementById('payment_method').value) errs.push('Preferred payment method is required.');
+        if (isGcashPaymentMethod()) {
+            var ref = document.getElementById('payment_reference').value.trim();
+            var proofPath = (document.getElementById('payment_proof_path') || {}).value || '';
+            if (!ref && !String(proofPath).trim()) {
+                errs.push('For GCash, enter your payment reference number and/or upload a proof-of-payment image (JPEG, PNG, or WebP).');
+            }
+        }
         if (!document.getElementById('consent').checked) errs.push('You must accept the consent statement.');
         return errs;
     }
@@ -847,6 +949,9 @@
         const reasonLabel = reasonSelect.options[reasonSelect.selectedIndex] && reasonSelect.options[reasonSelect.selectedIndex].dataset.label
             ? reasonSelect.options[reasonSelect.selectedIndex].dataset.label
             : '';
+        var proofPathEl = document.getElementById('payment_proof_path');
+        var proofPathVal = proofPathEl && proofPathEl.value ? String(proofPathEl.value).trim() : '';
+        var payRefVal = document.getElementById('payment_reference').value.trim();
         const body = {
             date: selectedDateStr,
             time: selectedTime,
@@ -857,6 +962,8 @@
             patient_details: patient_details,
             health_history: health_history,
             payment_method: document.getElementById('payment_method').value,
+            payment_reference: payRefVal,
+            payment_proof_path: proofPathVal,
             consent: true
         };
 
@@ -1051,9 +1158,13 @@
                         refSel.appendChild(opt);
                     });
                 }
+                portalCashlessQrPath = (data.cashless_payment_qr_path && String(data.cashless_payment_qr_path).trim()) || '';
+                updateScanToPayQr();
             } catch (e) {
                 paySel.innerHTML = '<option value="">Could not load options</option>';
                 refSel.innerHTML = '<option value="">Could not load options</option>';
+                portalCashlessQrPath = '';
+                updateScanToPayQr();
             }
         }
 
@@ -1130,9 +1241,43 @@
         var payEl = document.getElementById('payment_method');
         if (payEl) {
             payEl.addEventListener('change', function () {
+                updateGcashPaymentUi();
+                updateScanToPayQr();
                 if (wizardStep === 6) {
                     refreshConfirmSummary();
                 }
+            });
+        }
+        updateGcashPaymentUi();
+        updateScanToPayQr();
+
+        var proofFileEl = document.getElementById('payment_proof_file');
+        if (proofFileEl) {
+            proofFileEl.addEventListener('change', function () {
+                var f = this.files && this.files[0];
+                var hid = document.getElementById('payment_proof_path');
+                if (hid) {
+                    hid.value = '';
+                }
+                if (!f) {
+                    setPaymentProofMsg('', false);
+                    return;
+                }
+                if (f.size > 5 * 1024 * 1024) {
+                    this.value = '';
+                    setPaymentProofMsg('File must be under 5 MB.', true);
+                    return;
+                }
+                setPaymentProofMsg('Uploading…', false);
+                uploadGcashProofFile(f).then(function (path) {
+                    if (hid) {
+                        hid.value = path;
+                    }
+                    setPaymentProofMsg('Proof uploaded. You can still add a reference number if you like.', false);
+                }).catch(function (err) {
+                    proofFileEl.value = '';
+                    setPaymentProofMsg(err.message || 'Upload failed.', true);
+                });
             });
         }
 

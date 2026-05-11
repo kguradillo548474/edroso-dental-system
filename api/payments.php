@@ -168,7 +168,7 @@ switch ($method) {
         }
 
         $statsResult = $db->query("SELECT 
-            SUM(CASE WHEN status='Paid' THEN amount ELSE 0 END) as total_paid,
+            SUM(CASE WHEN status IN ('Paid','Partial') THEN amount ELSE 0 END) as total_paid,
             SUM(CASE WHEN status='Pending' THEN amount ELSE 0 END) as total_pending,
             COUNT(CASE WHEN status='Pending' THEN 1 END) as pending_count,
             COUNT(*) as total_count
@@ -195,7 +195,7 @@ switch ($method) {
         }
         $payStatus = $body['status'] ?? 'Pending';
         $desc = $body['description'] ?? '';
-        $payDate = ($payStatus === 'Paid') ? date('Y-m-d') : null;
+        $payDate = in_array($payStatus, ['Paid', 'Partial'], true) ? date('Y-m-d') : null;
 
         if ($patientId <= 0 || $amount < 0) {
             respond(['error' => 'Valid patient and amount are required.'], 400);

@@ -7,6 +7,29 @@ requireAuth();
 $method = $_SERVER['REQUEST_METHOD'];
 $db = getDB();
 
+function ensure_appointments_staff_slot_columns(mysqli $db): void {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $cols = [
+        'internal_change_reason' => 'VARCHAR(64) NULL DEFAULT NULL',
+        'slot_modified_at'       => 'DATETIME NULL DEFAULT NULL',
+    ];
+    foreach ($cols as $name => $ddl) {
+        $q = @$db->query("SHOW COLUMNS FROM appointments LIKE '" . $db->real_escape_string($name) . "'");
+        if ($q && $q->num_rows === 0) {
+            @$db->query('ALTER TABLE appointments ADD COLUMN `' . $name . '` ' . $ddl . ' AFTER notes');
+        }
+        if ($q) {
+            $q->free();
+        }
+    }
+    $done = true;
+}
+
+ensure_appointments_staff_slot_columns($db);
+
 if (!isset($_SESSION['_portal_admin_backfill_done'])) {
     try {
         require_once __DIR__ . '/../includes/portal_admin_sync.php';
@@ -27,6 +50,119 @@ function mapAdminStatusToPortal($status) {
     if ($norm === 'cancelled') return 'cancelled';
     if ($norm === 'scheduled' || $norm === 'confirmed' || $norm === 'in progress') return 'scheduled';
     return 'pending';
+}
+
+/** Allowed internal codes when staff changes date, time, dentist, or procedure. */
+function edroso_valid_appointment_change_reasons(): array {
+    return [
+        'schedule_conflict',
+        'dentist_availability',
+        'patient_request',
+        'clinic_operations',
+        'record_correction',
+        'other',
+    ];
+}
+
+function edroso_time_hhmm_for_compare(string $t): string {
+    $n = normalizeApptTime(trim($t));
+    if (strlen($n) >= 5) {
+        return substr($n, 0, 5);
+    }
+    return $n;
+}
+
+function edroso_admin_slot_changed(
+    array $prev,
+    int $newPatientId,
+    int $newDentistId,
+    string $newDate,
+    string $newTimeDb,
+    string $newProcName
+): bool {
+    if ((int) ($prev['patient_id'] ?? 0) !== $newPatientId) {
+        return true;
+    }
+    $od = (int) ($prev['dentist_id'] ?? 0);
+    $oDate = (string) ($prev['appointment_date'] ?? '');
+    $oTime = edroso_time_hhmm_for_compare((string) ($prev['appointment_time'] ?? ''));
+    $nTime = edroso_time_hhmm_for_compare($newTimeDb);
+    $op = trim((string) ($prev['procedure_name'] ?? ''));
+    $np = trim($newProcName);
+    if ($od !== $newDentistId || $oDate !== $newDate || $oTime !== $nTime) {
+        return true;
+    }
+    return strcasecmp($op, $np) !== 0;
+}
+
+/**
+ * Move the portal patient's booking row to the new slot so the same card updates (no duplicate list rows).
+ */
+function syncPortalPatientAppointmentAfterAdminSlotChange(
+    mysqli $db,
+    array $prevRow,
+    string $newDate,
+    string $newTimeDb,
+    int $newDentistId,
+    string $newProcName,
+    string $newAdminStatus,
+    string $changeReasonCode
+): void {
+    $patientId = (int) ($prevRow['patient_id'] ?? 0);
+    $portalUserId = findPortalUserIdForPatient($db, $patientId);
+    if ($portalUserId <= 0) {
+        return;
+    }
+
+    $oldDate = (string) ($prevRow['appointment_date'] ?? '');
+    $oldTimeDb = normalizeApptTime((string) ($prevRow['appointment_time'] ?? ''));
+
+    $portalStatus = mapAdminStatusToPortal($newAdminStatus);
+    $reasonWrite = function_exists('mb_substr') ? mb_substr($newProcName, 0, 100) : substr($newProcName, 0, 100);
+    $reasonLabelWrite = function_exists('mb_substr') ? mb_substr($newProcName, 0, 150) : substr($newProcName, 0, 150);
+    $code = substr($changeReasonCode, 0, 64);
+
+    $find = $db->prepare(
+        'SELECT id FROM patient_appointments
+         WHERE portal_user_id = ? AND preferred_date = ? AND preferred_time = ?
+         ORDER BY id DESC
+         LIMIT 1'
+    );
+    if (!$find) {
+        return;
+    }
+    $find->bind_param('iss', $portalUserId, $oldDate, $oldTimeDb);
+    $find->execute();
+    $row = $find->get_result()->fetch_assoc();
+    $find->close();
+    if (!$row || !isset($row['id'])) {
+        return;
+    }
+    $portalRowId = (int) $row['id'];
+
+    $upd = $db->prepare(
+        'UPDATE patient_appointments SET
+            preferred_date = ?, preferred_time = ?, dentist_id = ?,
+            reason = ?, reason_label = ?, status = ?,
+            staff_updated_at = CURRENT_TIMESTAMP, staff_update_reason_code = ?
+         WHERE id = ?'
+    );
+    if (!$upd) {
+        return;
+    }
+    $upd->bind_param(
+        'ssissssi',
+        $newDate,
+        $newTimeDb,
+        $newDentistId,
+        $reasonWrite,
+        $reasonLabelWrite,
+        $portalStatus,
+        $code,
+        $portalRowId
+    );
+    $upd->execute();
+    $upd->close();
 }
 
 function findPortalUserIdForPatient($db, $patientId) {
@@ -66,6 +202,54 @@ function findPortalUserIdForPatient($db, $patientId) {
     }
 
     return 0;
+}
+
+/**
+ * Portal GCash proof stored on patient_appointments; admin row is the mirror.
+ *
+ * @return string Relative web path (assets/uploads/portal_gcash/...) or ''.
+ */
+function fetch_payment_proof_path_for_admin_appointment(mysqli $db, array $appt): string {
+    $patientId = (int) ($appt['patient_id'] ?? 0);
+    $dentistId = (int) ($appt['dentist_id'] ?? 0);
+    $date = trim((string) ($appt['appointment_date'] ?? ''));
+    if ($patientId <= 0 || $dentistId <= 0 || $date === '') {
+        return '';
+    }
+    $portalUserId = findPortalUserIdForPatient($db, $patientId);
+    if ($portalUserId <= 0) {
+        return '';
+    }
+    $timeDb = normalizeApptTime((string) ($appt['appointment_time'] ?? ''));
+    $stmt = $db->prepare(
+        'SELECT payment_proof_path FROM patient_appointments
+         WHERE portal_user_id = ? AND dentist_id = ? AND preferred_date = ? AND preferred_time = ?
+           AND payment_proof_path IS NOT NULL AND TRIM(COALESCE(payment_proof_path, \'\')) <> \'\'
+         ORDER BY id DESC
+         LIMIT 1'
+    );
+    if (!$stmt) {
+        return '';
+    }
+    $stmt->bind_param('iiss', $portalUserId, $dentistId, $date, $timeDb);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        return '';
+    }
+    $path = trim((string) ($row['payment_proof_path'] ?? ''));
+    if ($path === '') {
+        return '';
+    }
+    $path = str_replace('\\', '/', $path);
+    if (!preg_match(
+        '#^assets/uploads/portal_gcash/gcash_\d+_[a-f0-9]{16}\.(jpg|jpeg|png|webp)$#i',
+        $path
+    )) {
+        return '';
+    }
+    return $path;
 }
 
 function assertAppointmentDateTimeBookable(string $apptDate, string $apptTime): void {
@@ -231,7 +415,8 @@ switch ($method) {
         $status    = $_GET['status'] ?? null;
         $search    = $_GET['search'] ?? '';
         $range     = $_GET['range'] ?? null;
-        $filter    = $_GET['filter'] ?? null;
+        $filterRaw = $_GET['filter'] ?? null;
+        $filter    = is_string($filterRaw) ? strtolower(trim($filterRaw)) : null;
 
         if ($id) {
             $stmt = $db->prepare(
@@ -252,6 +437,7 @@ switch ($method) {
             $appt = $stmt->get_result()->fetch_assoc();
             if (!$appt) respond(['error' => 'Not found'], 404);
             unset($appt['room']);
+            $appt['payment_proof_path'] = fetch_payment_proof_path_for_admin_appointment($db, $appt);
             respond($appt);
         }
 
@@ -440,6 +626,33 @@ switch ($method) {
         assertAppointmentDateTimeBookable($apptDate, $apptTime);
 
         $apptTimeDb = normalizeApptTime($apptTime);
+
+        $prevStmt = $db->prepare('SELECT * FROM appointments WHERE id = ? LIMIT 1');
+        if (!$prevStmt) {
+            respond(['error' => 'Database error'], 500);
+        }
+        $prevStmt->bind_param('i', $id);
+        $prevStmt->execute();
+        $prevRow = $prevStmt->get_result()->fetch_assoc();
+        $prevStmt->close();
+        if (!$prevRow) {
+            respond(['error' => 'Appointment not found'], 404);
+        }
+
+        $slotChanged = edroso_admin_slot_changed($prevRow, $patientId, $dentistId, $apptDate, $apptTimeDb, $procName);
+        $changeCode = trim((string) ($body['change_reason'] ?? ''));
+        if ($slotChanged) {
+            if (!in_array($changeCode, edroso_valid_appointment_change_reasons(), true)) {
+                respond(
+                    [
+                        'error' => 'Select a reason for this schedule change. This is for clinic records only and is not shown to patients.',
+                        'field' => 'change_reason',
+                    ],
+                    422
+                );
+            }
+        }
+
         $db->begin_transaction();
         try {
             if (!dentistSlotIsFreeForUpdate($db, $dentistId, $apptDate, $apptTimeDb, $id)) {
@@ -453,18 +666,57 @@ switch ($method) {
                     room=?, status=?, notes=?
                  WHERE id=?'
             );
-            $stmt->bind_param('iissssisssi',
-                $patientId, $dentistId, $procName, $procType,
-                $apptDate, $apptTimeDb, $duration, $room, $status, $notes, $id
+            $stmt->bind_param(
+                'iissssisssi',
+                $patientId,
+                $dentistId,
+                $procName,
+                $procType,
+                $apptDate,
+                $apptTimeDb,
+                $duration,
+                $room,
+                $status,
+                $notes,
+                $id
             );
             if (!$stmt->execute()) {
                 $db->rollback();
                 respond(['error' => $db->error], 500);
             }
+            $stmt->close();
+            if ($slotChanged) {
+                $slotWhen = date('Y-m-d H:i:s');
+                $st2 = $db->prepare(
+                    'UPDATE appointments SET internal_change_reason = ?, slot_modified_at = ? WHERE id = ?'
+                );
+                if ($st2) {
+                    $st2->bind_param('ssi', $changeCode, $slotWhen, $id);
+                    if (!$st2->execute()) {
+                        $db->rollback();
+                        $st2->close();
+                        respond(['error' => $db->error], 500);
+                    }
+                    $st2->close();
+                }
+            }
             $db->commit();
         } catch (Throwable $e) {
             $db->rollback();
             respond(['error' => $e->getMessage()], 500);
+        }
+
+        if ($slotChanged && (int) ($prevRow['patient_id'] ?? 0) === $patientId) {
+            syncPortalPatientAppointmentAfterAdminSlotChange(
+                $db,
+                $prevRow,
+                $apptDate,
+                $apptTimeDb,
+                $dentistId,
+                $procName,
+                $status,
+                $changeCode
+            );
         }
 
         $statusForSync = (string) ($body['status'] ?? '');

@@ -14,12 +14,20 @@ $stats['completed_appointments']  = (int)$db->query("SELECT COUNT(*) FROM appoin
 $stats['cancelled_appointments']  = (int)$db->query("SELECT COUNT(*) FROM appointments WHERE status='Cancelled'")->fetch_row()[0];
 $stats['pending_payments']        = (int)$db->query("SELECT COUNT(*) FROM payments WHERE status='Pending'")->fetch_row()[0];
 
-// Revenue
-$rev = $db->query("SELECT
-    SUM(CASE WHEN YEARWEEK(payment_date,1)=YEARWEEK(CURDATE(),1) THEN amount ELSE 0 END) AS weekly,
-    SUM(CASE WHEN MONTH(payment_date)=MONTH(CURDATE()) AND YEAR(payment_date)=YEAR(CURDATE()) THEN amount ELSE 0 END) AS monthly
-    FROM payments WHERE status='Paid'")->fetch_assoc();
-$stats['weekly_revenue']  = floatval($rev['weekly']  ?? 0);
+// Revenue (Paid + Partial). Use COALESCE(payment_date, DATE(created_at)) so rows with NULL payment_date still count in the right month — matches admin payments list display logic.
+$rev = $db->query(
+    "SELECT
+        SUM(CASE
+            WHEN YEARWEEK(COALESCE(payment_date, DATE(created_at)), 1) = YEARWEEK(CURDATE(), 1)
+            THEN amount ELSE 0 END) AS weekly,
+        SUM(CASE
+            WHEN MONTH(COALESCE(payment_date, DATE(created_at))) = MONTH(CURDATE())
+             AND YEAR(COALESCE(payment_date, DATE(created_at))) = YEAR(CURDATE())
+            THEN amount ELSE 0 END) AS monthly
+     FROM payments
+     WHERE status IN ('Paid','Partial')"
+)->fetch_assoc();
+$stats['weekly_revenue']  = floatval($rev['weekly'] ?? 0);
 $stats['monthly_revenue'] = floatval($rev['monthly'] ?? 0);
 
 // Recent appointments
