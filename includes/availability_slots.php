@@ -3,6 +3,7 @@
  * Dentist weekly schedule → time-slot grid, minus existing bookings.
  * Used by api/availability.php and api/patient_appointments.php (GET slots).
  */
+require_once __DIR__ . '/booking_datetime.php';
 
 if (!function_exists('edroso_weekday_name')) {
     function edroso_weekday_name(string $ymd): string {
@@ -237,7 +238,7 @@ if (!function_exists('edroso_next_available_dates_with_slots')) {
             return [];
         }
         $out = [];
-        $d = new DateTimeImmutable('today');
+        $d = new DateTimeImmutable('today', booking_timezone());
         for ($i = 0; $i < $scanDays && count($out) < $maxResults; $i++) {
             $ymd = $d->modify('+' . $i . ' days')->format('Y-m-d');
             $slots = edroso_available_slots_response($db, $dentistId, $ymd);
@@ -295,20 +296,17 @@ if (!function_exists('edroso_available_slots_response')) {
 
         $booked = edroso_booked_times_for_dentist_date($db, $dentistId, $dateYmd);
 
-        $nowCutoff = null;
-        if ($dateYmd === date('Y-m-d')) {
-            $nowCutoff = edroso_time_to_minutes(date('H:i'));
-        }
-
         $out = [];
         foreach ($allSlots as $time) {
-            if ($nowCutoff !== null && edroso_time_to_minutes($time) <= $nowCutoff) {
+            $past = is_past_time($dateYmd, $time);
+            if ($past) {
                 $out[] = [
                     'time'          => $time,
                     'available'     => false,
-                    'count'         => 1,
+                    'past'          => true,
+                    'count'         => 0,
                     'portal_count'  => 0,
-                    'admin_count'   => 1,
+                    'admin_count'   => 0,
                 ];
                 continue;
             }
@@ -316,6 +314,7 @@ if (!function_exists('edroso_available_slots_response')) {
             $out[] = [
                 'time'          => $time,
                 'available'     => !$occupied,
+                'past'          => false,
                 'count'         => $occupied ? 1 : 0,
                 'portal_count'  => $occupied ? 1 : 0,
                 'admin_count'   => 0,

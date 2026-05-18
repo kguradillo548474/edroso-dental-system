@@ -18,7 +18,7 @@ This release aligns **staff admin**, **APIs**, **portal booking**, and **documen
 | **Portal booking & payments** | **`api/patient_appointments.php`** + **`sql/patient_appointments.sql`**: **`payment_reference`**, **`payment_proof_path`**, staff metadata columns; **GCash proof** upload (`?action=upload_gcash_proof`), transactional booking paths, stricter GCash validation where configured. **`customer-site/portal/book.html`**, **`book.js`**, **`dashboard.html`** updated for the flow. |
 | **Clinic / portal settings** | **`api/settings.php`**: admin **cashless payment QR** upload/clear (`upload_cashless_payment_qr`, `clear_cashless_payment_qr` → **`assets/uploads/payment_qr/`**), **`portal_referral_sources`**, **`auto_logout_minutes`** (surfaced on `auth.php?action=me`). **`api/portal_options.php`** exposes **`cashless_payment_qr_path`** and referral list to the portal. **`admin/settings.html`** extended for new controls. |
 | **Other API / UI** | **`api/dashboard.php`**, **`api/backup.php`**, **`api/payments.php`**, **`api/services.php`**, **`api/patient_auth.php`** — incremental fixes. **`includes/portal_booking_mirror.php`** — small sync adjustments. Marketing **`login.html` / `register.html` / `service.html` / `services.html`** — minor link or copy tweaks. |
-| **Performance (optional SQL)** | **`sql/add_appointment_indexes.sql`** — suggested indexes on **`appointments`** and **`patient_appointments`** date/status columns (run manually if tables already exist). |
+| **Performance (legacy SQL)** | **`sql/add_appointment_indexes.sql`** — same date/status indexes as in **`sql/database.sql`** and **`sql/patient_appointments.sql`**; only for **old** DBs missing them (skip on fresh installs). |
 
 Runtime upload directories (gitignored or local): **`assets/uploads/payment_qr/`**, **`assets/uploads/portal_gcash/`**.
 
@@ -232,6 +232,7 @@ Change passwords in production.
 | **Settings** | Clinic configuration; **cashless QR** upload; portal referral list; session **auto-logout** minutes |
 | **Login activity** | Read-only audit of staff + portal sign-in attempts (`api/auth_logs.php`) |
 | **Auth** | Session-based staff login via `api/auth.php`; **OTP recovery** for staff; login **audit log** |
+| **Exports** | CSV via `api/export.php` — dashboard summary, appointments (filtered), payments (admin) |
 
 ---
 

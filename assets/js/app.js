@@ -422,8 +422,20 @@ function animateCounter(el, target) {
     }, 20);
 }
 
+// ── CSV export (api/export.php) ───────────────────────────────────────────
+function downloadExport(params) {
+    const url = new URL(`${API_BASE}/export.php`, window.location.href);
+    const entries = typeof params === 'string' ? new URLSearchParams(params) : new URLSearchParams(params || {});
+    entries.set('format', entries.get('format') || 'csv');
+    entries.forEach((v, k) => url.searchParams.set(k, v));
+    window.location.href = url.toString();
+}
+
 // ── Confirm dialog helper ─────────────────────────────────────────────────
-function confirmDialog(message) {
+function confirmDialog(message, options) {
+    options = options || {};
+    const title = options.title || 'Are you sure?';
+    const confirmLabel = options.confirmLabel || 'Delete';
     return new Promise(resolve => {
         const d = document.createElement('div');
         d.className = 'fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4';
@@ -432,11 +444,11 @@ function confirmDialog(message) {
                 <div class="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
                 </div>
-                <p class="text-secondary font-medium mb-1">Are you sure?</p>
+                <p class="text-secondary font-medium mb-1">${title}</p>
                 <p class="text-sm text-gray-500 mb-5">${message}</p>
                 <div class="flex gap-3">
                     <button id="cfmCancel" class="flex-1 py-2 bg-neutral-dark text-secondary rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
-                    <button id="cfmOk" class="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors">Delete</button>
+                    <button id="cfmOk" class="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors">${confirmLabel}</button>
                 </div>
             </div>`;
         document.body.appendChild(d);

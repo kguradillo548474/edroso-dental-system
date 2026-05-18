@@ -109,8 +109,10 @@ function loadReceiptFormat(mysqli $db): string {
 switch ($method) {
     case 'GET':
         $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-        $search = $_GET['search'] ?? '';
-        $status = $_GET['status'] ?? null;
+        $search = trim((string) ($_GET['search'] ?? ''));
+        $status = isset($_GET['status']) && $_GET['status'] !== '' ? trim((string) $_GET['status']) : null;
+        $from = isset($_GET['from']) ? trim((string) $_GET['from']) : '';
+        $to = isset($_GET['to']) ? trim((string) $_GET['to']) : '';
 
         if ($id > 0) {
             $stmt = $db->prepare("SELECT py.*, CONCAT(p.first_name,' ',p.last_name) as patient_name, p.patient_number FROM payments py JOIN patients p ON py.patient_id = p.id WHERE py.id = ?");
@@ -143,14 +145,26 @@ switch ($method) {
             $params[] = $status;
             $types .= 's';
         }
-        if ($search) {
+        if ($search !== '') {
             $conditions[] = "(CONCAT(p.first_name,' ',p.last_name) LIKE ? OR p.patient_number LIKE ? OR py.description LIKE ?)";
-            $s = "%$search%";
+            $s = '%' . $search . '%';
             $params = array_merge($params, [$s, $s, $s]);
             $types .= 'sss';
         }
-        if ($conditions) $sql .= ' WHERE ' . implode(' AND ', $conditions);
-        $sql .= " ORDER BY py.created_at DESC";
+        if ($from !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $conditions[] = 'COALESCE(py.payment_date, DATE(py.created_at)) >= ?';
+            $params[] = $from;
+            $types .= 's';
+        }
+        if ($to !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $conditions[] = 'COALESCE(py.payment_date, DATE(py.created_at)) <= ?';
+            $params[] = $to;
+            $types .= 's';
+        }
+        if ($conditions) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+        $sql .= ' ORDER BY COALESCE(py.payment_date, DATE(py.created_at)) DESC, py.id DESC';
 
         if ($params) {
             $stmt = $db->prepare($sql);
@@ -167,13 +181,26 @@ switch ($method) {
             $payments[] = $row;
         }
 
-        $statsResult = $db->query("SELECT 
-            SUM(CASE WHEN status IN ('Paid','Partial') THEN amount ELSE 0 END) as total_paid,
-            SUM(CASE WHEN status='Pending' THEN amount ELSE 0 END) as total_pending,
-            COUNT(CASE WHEN status='Pending' THEN 1 END) as pending_count,
+        $statsSql = "SELECT 
+            SUM(CASE WHEN py.status IN ('Paid','Partial') THEN py.amount ELSE 0 END) as total_paid,
+            SUM(CASE WHEN py.status='Pending' THEN py.amount ELSE 0 END) as total_pending,
+            COUNT(CASE WHEN py.status='Pending' THEN 1 END) as pending_count,
             COUNT(*) as total_count
-            FROM payments");
-        $stats = $statsResult->fetch_assoc();
+            FROM payments py
+            JOIN patients p ON py.patient_id = p.id
+            LEFT JOIN appointments a ON py.appointment_id = a.id";
+        if ($conditions) {
+            $statsSql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+        if ($params) {
+            $statsStmt = $db->prepare($statsSql);
+            $statsStmt->bind_param($types, ...$params);
+            $statsStmt->execute();
+            $stats = $statsStmt->get_result()->fetch_assoc();
+            $statsStmt->close();
+        } else {
+            $stats = $db->query($statsSql)->fetch_assoc();
+        }
 
         respond([
             'payments' => $payments,

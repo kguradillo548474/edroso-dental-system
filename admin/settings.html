@@ -219,6 +219,46 @@
         </main>
     </div>
 
+    <!-- Add service modal -->
+    <div id="addServiceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden modal-overlay p-4">
+        <div class="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-lg mx-auto modal-box max-h-[90vh] overflow-y-auto border border-neutral-dark/60">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-bold text-secondary text-xl flex items-center gap-2">
+                    <span class="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center text-primary"><i class="fas fa-plus"></i></span>
+                    Add service
+                </h3>
+                <button type="button" onclick="closeModal('addServiceModal')" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-neutral-dark text-gray-400 hover:text-secondary transition-colors" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="addServiceForm">
+                <div class="space-y-4 mb-5">
+                    <div>
+                        <label for="addSvcName" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Service name <span class="text-red-400">*</span></label>
+                        <input type="text" id="addSvcName" required class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="e.g. Oral Prophylaxis (Cleaning)">
+                    </div>
+                    <div>
+                        <label for="addSvcPrice" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Price (₱) <span class="text-red-400">*</span></label>
+                        <input type="number" id="addSvcPrice" required min="0" step="0.01" value="0" class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/40">
+                    </div>
+                    <div>
+                        <label for="addSvcDesc" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Brief description <span class="text-gray-400 font-normal normal-case">(optional)</span></label>
+                        <textarea id="addSvcDesc" rows="3" class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="Shown on the public services page"></textarea>
+                    </div>
+                    <div>
+                        <label for="addSvcImage" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Photo path or URL <span class="text-gray-400 font-normal normal-case">(optional)</span></label>
+                        <input type="text" id="addSvcImage" class="w-full px-4 py-2.5 border border-neutral-dark rounded-xl text-sm font-mono text-secondary focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="assets/images/services/… or https://…" spellcheck="false">
+                        <p class="text-xs text-gray-400 mt-1.5">You can upload a photo after saving from the service row.</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap justify-end gap-3 pt-4 border-t border-neutral-dark">
+                    <button type="button" onclick="closeModal('addServiceModal')" class="px-5 py-2.5 bg-neutral-dark text-secondary rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button type="submit" id="addServiceSubmitBtn" class="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-semibold transition-colors shadow-sm">
+                        <i class="fas fa-check mr-1.5"></i>Add service
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../assets/js/layout.js"></script>
     <script src="../assets/js/app.js"></script>
     <script>
@@ -246,6 +286,10 @@
 
     function defaultReferralSources() {
         return ['Facebook', 'Instagram', 'TikTok', 'Referral', 'Walk-in', 'Other'];
+    }
+
+    function escHtmlText(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function escAttr(s) {
@@ -397,7 +441,9 @@
             } catch (err) { showToast(err.message, 'error'); }
         }
         if (e.target.classList.contains('del-row')) {
-            if (!confirm('Delete this service?')) return;
+            const svcLabel = (tr.querySelector('.svc-name') && tr.querySelector('.svc-name').value.trim()) || 'this service';
+            const ok = await confirmDialog(`Remove <strong>${escHtmlText(svcLabel)}</strong> from the treatment list? This cannot be undone.`);
+            if (!ok) return;
             try {
                 await api.delete('services.php?id=' + id);
                 showToast('Deleted');
@@ -417,7 +463,8 @@
             } catch (err) { showToast(err.message, 'error'); }
         }
         if (e.target.classList.contains('clear-svc-img')) {
-            if (!confirm('Remove stored photo/URL for this service?')) return;
+            const ok = await confirmDialog('Remove the stored photo and URL for this service?', { confirmLabel: 'Remove' });
+            if (!ok) return;
             try {
                 await api.post('services.php?id=' + id + '&action=clear_image', {});
                 showToast('Photo cleared');
@@ -426,17 +473,49 @@
         }
     });
 
-    document.getElementById('addServiceBtn').addEventListener('click', async () => {
-        const name = prompt('Service name');
-        if (!name || !name.trim()) return;
-        const price = parseFloat(prompt('Price (₱)', '0') || '0');
-        const description = (prompt('Short description for website (optional)', '') || '').trim();
-        const image_url = (prompt('Photo path or https URL (optional)', '') || '').trim();
+    function openAddServiceModal() {
+        const form = document.getElementById('addServiceForm');
+        if (form) form.reset();
+        const priceEl = document.getElementById('addSvcPrice');
+        if (priceEl) priceEl.value = '0';
+        openModal('addServiceModal');
+        setTimeout(() => {
+            const nameEl = document.getElementById('addSvcName');
+            if (nameEl) nameEl.focus();
+        }, 320);
+    }
+
+    document.getElementById('addServiceBtn').addEventListener('click', () => {
+        openAddServiceModal();
+    });
+
+    document.getElementById('addServiceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('addSvcName').value.trim();
+        const price = parseFloat(document.getElementById('addSvcPrice').value);
+        const description = document.getElementById('addSvcDesc').value.trim();
+        const image_url = document.getElementById('addSvcImage').value.trim();
+        if (!name) {
+            showToast('Service name is required', 'error');
+            return;
+        }
+        const submitBtn = document.getElementById('addServiceSubmitBtn');
+        if (submitBtn) submitBtn.disabled = true;
         try {
-            await api.post('services.php', { name: name.trim(), price: isNaN(price) ? 0 : price, description, image_url });
+            await api.post('services.php', {
+                name,
+                price: isNaN(price) ? 0 : price,
+                description,
+                image_url
+            });
+            closeModal('addServiceModal');
             showToast('Service added');
             renderServices();
-        } catch (err) { showToast(err.message, 'error'); }
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
     });
 
     document.getElementById('saveClinicProfile').addEventListener('click', async () => {

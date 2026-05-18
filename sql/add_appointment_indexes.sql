@@ -1,6 +1,9 @@
--- Migration: indexes for appointments and patient_appointments
--- Run once against database edroso_dental (phpMyAdmin or mysql client).
--- If an index already exists, skip that line or remove the duplicate from this file.
+-- Legacy migration only — NOT needed after a fresh import of:
+--   sql/database.sql (appointments already has idx_appointment_date, idx_status, idx_date_status)
+--   sql/patient_appointments.sql (same index names on preferred_date / status)
+-- Run against OLD databases that predate those definitions; duplicate-index errors mean you can skip.
+--
+-- Database: edroso_dental (phpMyAdmin or mysql client).
 
 USE edroso_dental;
 

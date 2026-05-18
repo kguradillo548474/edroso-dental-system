@@ -19,6 +19,9 @@
             <!-- Action bar (same rhythm as Patients / Appointments — no extra hero; title is in the fixed header) -->
             <div class="flex flex-wrap justify-between items-center mb-5 gap-3">
                 <div class="flex flex-wrap items-center gap-3">
+                    <button type="button" id="exportPaymentsBtn" class="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm inline-flex items-center gap-2 border border-neutral-dark bg-white text-secondary hover:bg-neutral">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </button>
                     <button type="button" id="addPaymentBtn" class="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm inline-flex items-center gap-2 payments-btn-primary">
                         <i class="fas fa-plus"></i> Add Payment
                     </button>
@@ -29,6 +32,14 @@
                         <option value="Partial">Partial</option>
                         <option value="Refunded">Refunded</option>
                     </select>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="dateFrom" title="From date" aria-label="From date"
+                            class="py-2.5 px-3 rounded-xl border border-neutral-dark bg-white text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <span class="text-gray-400 text-sm">–</span>
+                        <input type="date" id="dateTo" title="To date" aria-label="To date"
+                            class="py-2.5 px-3 rounded-xl border border-neutral-dark bg-white text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        <button type="button" id="clearDatesBtn" class="px-3 py-2.5 rounded-xl border border-neutral-dark bg-white text-sm text-gray-500 hover:bg-neutral hover:text-secondary transition-colors" title="Clear date range">Clear</button>
+                    </div>
                 </div>
                 <div class="relative w-full sm:w-72 max-w-full">
                     <input type="text" id="searchInput" placeholder="Search payments…" class="pl-10 pr-4 py-2.5 rounded-xl bg-white border border-neutral-dark text-sm text-secondary placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 w-full">
@@ -197,43 +208,92 @@
     function printPaymentReceipt(p) {
         const h = clinicHeader || {};
         const detailed = receiptFormat === 'detailed';
-        const extra = detailed
-            ? `<p class="small">Patient #: ${escHtml(p.patient_number)}</p><p class="small">Record ID: ${escHtml(p.id)}</p>`
+        const payDate = (p.display_date || p.payment_date) ? escHtml(formatDate(p.display_date || p.payment_date)) : '—';
+        const statusRaw = String(p.status || '').trim();
+        const statusLower = statusRaw.toLowerCase();
+        const statusClass = statusLower === 'paid' ? 'badge badge--paid' : (statusLower === 'pending' ? 'badge badge--pending' : 'badge');
+        const extraMeta = detailed
+            ? `<p class="patient-meta">Patient # ${escHtml(p.patient_number || '—')} · Record ${escHtml(p.id)}</p>`
             : '';
-        const w = window.open('', '_blank', 'width=400,height=600');
+        const w = window.open('', '_blank', 'width=440,height=720');
         if (!w) { showToast('Allow pop-ups to print receipt.', 'warning'); return; }
-        w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
+        w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Receipt — ${escHtml(p.patient_name || 'Payment')}</title>
             <style>
-                body{font-family:system-ui,sans-serif;padding:24px;max-width:360px;margin:0 auto;color:#222}
-                .hdr{text-align:center;border-bottom:2px solid #22ccb2;padding-bottom:12px;margin-bottom:16px}
-                .hdr h1{font-size:1.1rem;margin:0 0 4px}
-                .hdr p{margin:2px 0;font-size:0.8rem;color:#555}
-                .row{display:flex;justify-content:space-between;margin:6px 0;font-size:0.9rem}
-                .amt{font-size:1.25rem;font-weight:700;margin-top:12px;text-align:center}
-                .small{font-size:0.75rem;color:#666}
+                @page{margin:12mm}*{box-sizing:border-box}
+                body{font-family:"Segoe UI",system-ui,sans-serif;margin:0;padding:20px;background:#eef2f6;color:#2c3e50;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+                .sheet{max-width:380px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(44,62,80,.12);border:1px solid #e3e8ef}
+                .brand{background:linear-gradient(135deg,#22ccb2,#1bab96);color:#fff;text-align:center;padding:22px 20px 18px}
+                .brand__icon{width:48px;height:48px;margin:0 auto 10px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+                .brand h1{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+                .brand p{margin:4px 0 0;font-size:.78rem;opacity:.92;line-height:1.45}
+                .rc-body{padding:18px 20px 20px}
+                .receipt-tag{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+                .receipt-tag__label{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#22ccb2}
+                .receipt-tag__id{font-size:.72rem;color:#8896a8}
+                .patient-box{background:#f5f7fa;border:1px solid #e8edf2;border-radius:10px;padding:12px 14px;margin-bottom:14px}
+                .patient-box__label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8896a8;margin:0 0 4px}
+                .patient-box__name{margin:0;font-size:1rem;font-weight:700;color:#2c3e50}
+                .patient-meta{margin:6px 0 0;font-size:.72rem;color:#6b7c93}
+                .details{border:1px solid #e8edf2;border-radius:10px;overflow:hidden}
+                .details__row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;font-size:.86rem;border-bottom:1px solid #eef2f6}
+                .details__row:last-child{border-bottom:0}
+                .details__row:nth-child(even){background:#fafbfc}
+                .details__k{color:#6b7c93;font-weight:500}
+                .details__v{font-weight:600;text-align:right;color:#2c3e50}
+                .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;text-transform:capitalize}
+                .badge--paid{background:#d1fae5;color:#047857}
+                .badge--pending{background:#fef3c7;color:#b45309}
+                .total{margin-top:16px;padding:16px 14px;background:linear-gradient(135deg,#f0fdf9,#e6faf6);border:1px solid #b8ebe3;border-radius:12px;text-align:center}
+                .total__label{margin:0;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#1bab96}
+                .total__amt{margin:6px 0 0;font-size:1.75rem;font-weight:800;color:#2c3e50}
+                .footer{margin-top:16px;padding-top:14px;border-top:1px dashed #d5dde8;text-align:center;font-size:.75rem;color:#8896a8;line-height:1.5}
+                @media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border:none;max-width:100%}}
             </style></head><body>
-            <div class="hdr">
-                <h1>${escHtml(h.clinic_name || 'Dental Clinic')}</h1>
-                ${h.dentist_name ? `<p>${escHtml(h.dentist_name)}</p>` : ''}
-                ${h.prc_license ? `<p class="small">PRC: ${escHtml(h.prc_license)}</p>` : ''}
-                ${h.clinic_contact ? `<p>${escHtml(h.clinic_contact)}</p>` : ''}
-                ${h.clinic_hours ? `<p class="small">${escHtml(h.clinic_hours)}</p>` : ''}
-            </div>
-            <p class="small">Receipt / payment record</p>
-            <div class="row"><span>Patient</span><span>${escHtml(p.patient_name)}</span></div>
-            ${extra}
-            <div class="row"><span>Description</span><span>${escHtml(p.description || '—')}</span></div>
-            <div class="row"><span>Method</span><span>${escHtml(p.payment_method)}</span></div>
-            <div class="row"><span>Status</span><span>${escHtml(p.status)}</span></div>
-            <div class="row"><span>Date</span><span>${(p.display_date || p.payment_date) ? escHtml(formatDate(p.display_date || p.payment_date)) : '—'}</span></div>
-            <p class="amt">${escHtml(formatMoney(p.amount))}</p>
+            <article class="sheet">
+                <header class="brand">
+                    <div class="brand__icon" aria-hidden="true">🦷</div>
+                    <h1>${escHtml(h.clinic_name || 'Dental Clinic')}</h1>
+                    ${h.dentist_name ? `<p>${escHtml(h.dentist_name)}</p>` : ''}
+                    ${h.prc_license ? `<p>PRC ${escHtml(h.prc_license)}</p>` : ''}
+                    ${h.clinic_contact ? `<p>${escHtml(h.clinic_contact)}</p>` : ''}
+                    ${h.clinic_hours ? `<p>${escHtml(h.clinic_hours)}</p>` : ''}
+                </header>
+                <div class="rc-body">
+                    <div class="receipt-tag">
+                        <span class="receipt-tag__label">Official receipt</span>
+                        <span class="receipt-tag__id">#${escHtml(p.id)}</span>
+                    </div>
+                    <div class="patient-box">
+                        <p class="patient-box__label">Patient</p>
+                        <p class="patient-box__name">${escHtml(p.patient_name)}</p>
+                        ${extraMeta}
+                    </div>
+                    <div class="details">
+                        <div class="details__row"><span class="details__k">Description</span><span class="details__v">${escHtml(p.description || '—')}</span></div>
+                        <div class="details__row"><span class="details__k">Payment method</span><span class="details__v">${escHtml(p.payment_method)}</span></div>
+                        <div class="details__row"><span class="details__k">Status</span><span class="details__v"><span class="${statusClass}">${escHtml(statusRaw || '—')}</span></span></div>
+                        <div class="details__row"><span class="details__k">Date</span><span class="details__v">${payDate}</span></div>
+                    </div>
+                    <div class="total">
+                        <p class="total__label">Amount paid</p>
+                        <p class="total__amt">${escHtml(formatMoney(p.amount))}</p>
+                    </div>
+                    <p class="footer">Thank you for choosing ${escHtml(h.clinic_name || 'our clinic')}.<br>Please keep this receipt for your records.</p>
+                </div>
+            </article>
             <script>window.onload=function(){window.print();}<\/script>
             </body></html>`);
         w.document.close();
     }
 
     async function init() {
-        await checkAuth();
+        const user = await checkAuth();
+        if (user && user.role !== 'admin') {
+            const exportBtn = document.getElementById('exportPaymentsBtn');
+            if (exportBtn) {
+                exportBtn.classList.add('hidden');
+            }
+        }
         // Load patients for select
         try {
             patients = await api.get('patients.php');
@@ -243,11 +303,27 @@
         loadPayments();
     }
 
-    async function loadPayments() {
+    function getPaymentFilterParams() {
         const status = document.getElementById('statusFilter').value;
-        const search = document.getElementById('searchInput').value;
+        const search = document.getElementById('searchInput').value.trim();
+        const from = document.getElementById('dateFrom')?.value || '';
+        const to = document.getElementById('dateTo')?.value || '';
+        const params = {};
+        if (status) params.status = status;
+        if (search) params.search = search;
+        if (from) params.from = from;
+        if (to) params.to = to;
+        return { params, from, to };
+    }
+
+    async function loadPayments() {
+        const { params, from, to } = getPaymentFilterParams();
+        if (from && to && from > to) {
+            showToast('“From” date must be on or before “To” date.', 'error');
+            return;
+        }
         try {
-            const data = await api.get('payments.php', { status, search });
+            const data = await api.get('payments.php', params);
             const payments = data.payments || [];
             const stats = data.stats || {};
             lastPayments = payments;
@@ -391,6 +467,23 @@
     // Filters
     document.getElementById('statusFilter').addEventListener('change', loadPayments);
     document.getElementById('searchInput').addEventListener('input', debounce(loadPayments, 400));
+    document.getElementById('dateFrom')?.addEventListener('change', loadPayments);
+    document.getElementById('dateTo')?.addEventListener('change', loadPayments);
+    document.getElementById('clearDatesBtn')?.addEventListener('click', () => {
+        const fromEl = document.getElementById('dateFrom');
+        const toEl = document.getElementById('dateTo');
+        if (fromEl) fromEl.value = '';
+        if (toEl) toEl.value = '';
+        loadPayments();
+    });
+    document.getElementById('exportPaymentsBtn').addEventListener('click', () => {
+        const { params, from, to } = getPaymentFilterParams();
+        if (from && to && from > to) {
+            showToast('“From” date must be on or before “To” date.', 'error');
+            return;
+        }
+        downloadExport({ resource: 'payments', ...params });
+    });
 
     init();
     </script>

@@ -551,6 +551,14 @@
     border-style: dashed;
 }
 
+.slot-pill--past {
+    background: #e8eaed;
+    border-color: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
 .slot-pill .slot-pill__status {
     display: block;
     font-size: 0.65rem;

@@ -539,8 +539,25 @@ async function loadTabList() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
+function buildAppointmentsExportParams() {
+    const params = { resource: 'appointments' };
+    if (listFilterTab === 'day' && pickedDayYmd) {
+        params.date = pickedDayYmd;
+    } else if (listFilterTab && listFilterTab !== 'day') {
+        params.filter = listFilterTab;
+    }
+    appendListQueryParams(params);
+    return params;
+}
+
 async function init() {
     await checkAuth();
+    const exportApptBtn = document.getElementById('exportAppointmentsBtn');
+    if (exportApptBtn) {
+        exportApptBtn.addEventListener('click', () => {
+            downloadExport(buildAppointmentsExportParams());
+        });
+    }
     await Promise.all([loadFormData(), loadAllAppts()]);
     await loadTabCounts();
     setView('list');

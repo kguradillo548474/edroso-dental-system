@@ -14,8 +14,8 @@
         return isPortalPage() ? 'book.html' : 'portal/book.html';
     }
 
-    function registerUrlWithNext() {
-        var base = isPortalPage() ? '../register.html' : 'register.html';
+    function loginUrlWithNext() {
+        var base = isPortalPage() ? '../login.html' : 'login.html';
         return base + '?next=' + encodeURIComponent('portal/book.html');
     }
 
@@ -34,11 +34,11 @@
                 if (data && data.id) {
                     window.location.href = bookUrl();
                 } else {
-                    window.location.href = registerUrlWithNext();
+                    window.location.href = loginUrlWithNext();
                 }
             })
             .catch(function () {
-                window.location.href = (isPortalPage() ? '../login.html' : 'login.html') + '?next=' + encodeURIComponent('portal/book.html');
+                window.location.href = loginUrlWithNext();
             });
     }
 

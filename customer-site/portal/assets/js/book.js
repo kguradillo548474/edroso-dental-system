@@ -371,9 +371,74 @@
     /** Last bookable clock time (HH:MM). From portal_options when present; else 16:30. */
     let clinicEndTimeStr = '16:30';
 
+  /** Asia/Manila — matches server booking_datetime.php */
+    const BOOKING_TZ = 'Asia/Manila';
+
+    function getManilaDateTimeParts() {
+        const parts = { year: '', month: '', day: '', hour: '', minute: '' };
+        new Intl.DateTimeFormat('en-US', {
+            timeZone: BOOKING_TZ,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).formatToParts(new Date()).forEach(function (p) {
+            if (p.type !== 'literal') {
+                parts[p.type] = p.value;
+            }
+        });
+        return {
+            ymd: parts.year + '-' + parts.month + '-' + parts.day,
+            minutes: parseInt(parts.hour, 10) * 60 + parseInt(parts.minute, 10)
+        };
+    }
+
     function todayISO() {
-        const d = new Date();
-        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        return getManilaDateTimeParts().ymd;
+    }
+
+    function timeToMinutes(hhmm) {
+        const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})/);
+        if (!m) {
+            return 0;
+        }
+        return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    }
+
+    function isPastDate(ymd) {
+        if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+            return true;
+        }
+        return ymd < getManilaDateTimeParts().ymd;
+    }
+
+    function isPastTime(ymd, hhmm) {
+        if (isPastDate(ymd)) {
+            return true;
+        }
+        const manila = getManilaDateTimeParts();
+        if (ymd > manila.ymd) {
+            return false;
+        }
+        return timeToMinutes(hhmm) <= manila.minutes;
+    }
+
+    /** Mark same-day slots at or before current Manila time as unavailable. */
+    function disablePastTimeSlots(slots, dateYmd) {
+        if (!dateYmd || !Array.isArray(slots)) {
+            return slots || [];
+        }
+        return slots.map(function (s) {
+            if (!s || !s.time) {
+                return s;
+            }
+            if (isPastTime(dateYmd, s.time)) {
+                return Object.assign({}, s, { available: false, past: true });
+            }
+            return Object.assign({}, s, { past: false });
+        });
     }
 
     function parseYMD(str) {
@@ -422,16 +487,19 @@
         return new Date(y, m, d, p.h, p.mm, 0, 0);
     }
 
-    /** Past dates disabled; today disabled only at/after clinic end (clinic_end_time or 16:30). */
+    /** Past dates disabled (Manila); today disabled only at/after clinic end. */
     function isCalendarDayDisabled(y, m, d) {
-        var dayStart = new Date(y, m, d);
-        dayStart.setHours(0, 0, 0, 0);
-        var todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        if (dayStart < todayStart) {
+        const ymd =
+            y +
+            '-' +
+            String(m + 1).padStart(2, '0') +
+            '-' +
+            String(d).padStart(2, '0');
+        if (isPastDate(ymd)) {
             return true;
         }
-        if (dayStart > todayStart) {
+        const todayYmd = todayISO();
+        if (ymd > todayYmd) {
             return false;
         }
         return new Date() >= lastBookableMomentForCalendarDay(y, m, d);
@@ -473,6 +541,10 @@
                 el.className = 'cal-day' + (selectedDateStr === ymd ? ' cal-day--selected' : '');
                 el.textContent = d;
                 el.addEventListener('click', function () {
+                    if (isPastDate(ymd)) {
+                        showError('You cannot book an appointment in the past.');
+                        return;
+                    }
                     selectedDateStr = ymd;
                     selectedTime = null;
                     pendingSlot = null;
@@ -528,7 +600,13 @@
                 { credentials: 'same-origin' }
             );
             const data = await res.json().catch(function () { return {}; });
-            slotsData = Array.isArray(data.slots) ? data.slots : [];
+            if (!res.ok && data.error) {
+                document.getElementById('slotHint').textContent = data.error;
+                slotsData = [];
+                syncWizardNextState();
+                return;
+            }
+            slotsData = disablePastTimeSlots(Array.isArray(data.slots) ? data.slots : [], ymd);
             var hasOpen = slotsData.some(function (s) {
                 return s && s.available;
             });
@@ -552,8 +630,14 @@
                 return;
             }
             if (!hasOpen) {
-                document.getElementById('slotHint').textContent =
-                    'All listed times are already booked for this day.' + sugText;
+                var onlyPast =
+                    slotsData.length > 0 &&
+                    slotsData.every(function (s) {
+                        return s && (s.past || isPastTime(ymd, s.time));
+                    });
+                document.getElementById('slotHint').textContent = onlyPast
+                    ? 'Earlier times today have already passed. Please choose a later time or another date.' + sugText
+                    : 'All listed times are already booked for this day.' + sugText;
                 renderSlotList();
                 syncWizardNextState();
                 return;
@@ -573,12 +657,17 @@
         if (!selectedDateStr) return;
         slotsData.forEach(function (slot) {
             var slotTime = slot.time;
-            var booked = !slot.available;
+            var past = !!(slot.past || isPastTime(selectedDateStr, slotTime));
+            var booked = !slot.available && !past;
+            var disabled = past || booked;
             const row = document.createElement('button');
             row.type = 'button';
-            row.disabled = booked;
+            row.disabled = disabled;
             row.className = 'slot-pill';
-            if (booked) {
+            if (past) {
+                row.className += ' slot-pill--past';
+                row.innerHTML = '<span>' + format12h(slotTime) + '</span><span class="slot-pill__status">Passed</span>';
+            } else if (booked) {
                 row.className += ' slot-pill--booked';
                 row.innerHTML = '<span>' + format12h(slotTime) + '</span><span class="slot-pill__status">Full</span>';
             } else if (selectedTime === slotTime) {
@@ -590,8 +679,12 @@
             } else {
                 row.innerHTML = '<span>' + format12h(slotTime) + '</span>';
             }
-            if (!booked) {
+            if (!disabled) {
                 row.addEventListener('click', function () {
+                    if (isPastTime(selectedDateStr, slotTime)) {
+                        showError('You cannot book an appointment for a time that has already passed.');
+                        return;
+                    }
                     selectedTime = slotTime;
                     pendingSlot = null;
                     var wn = document.getElementById('wizNext');
@@ -863,6 +956,12 @@
         const reasonSelectEl = document.getElementById('reason');
         const reasonIdVal = reasonSelectEl ? reasonSelectEl.value : '';
         if (!selectedDateStr || !selectedTime) errs.push('Please select a date and time for your appointment.');
+        if (selectedDateStr && isPastDate(selectedDateStr)) {
+            errs.push('You cannot book an appointment in the past.');
+        }
+        if (selectedDateStr && selectedTime && isPastTime(selectedDateStr, selectedTime)) {
+            errs.push('You cannot book an appointment for a time that has already passed.');
+        }
         if (!reasonIdVal) errs.push('Please select a reason for your appointment.');
         if (!document.getElementById('dentist').value) errs.push('Please select a preferred dentist.');
         const ret = document.querySelector('input[name="returning"]:checked');

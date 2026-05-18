@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/appointment_conflict.php';
 require_once __DIR__ . '/../includes/portal_booking_mirror.php';
 require_once __DIR__ . '/../includes/availability_slots.php';
+require_once __DIR__ . '/../includes/booking_datetime.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/validation.php';
 if (session_status() === PHP_SESSION_NONE) {
@@ -800,6 +801,9 @@ if ($method === 'GET' && isset($_GET['date']) && $_GET['date'] !== '') {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         respond(['error' => 'Invalid date'], 400);
     }
+    if (is_past_date($date)) {
+        respond(['error' => 'You cannot book an appointment in the past.', 'slots' => []], 400);
+    }
 
     $dentistId = isset($_GET['dentist_id']) ? (int) $_GET['dentist_id'] : 0;
     if ($dentistId <= 0) {
@@ -934,15 +938,11 @@ if ($method === 'POST') {
         respond(['error' => 'Invalid time'], 400);
     }
     $timeSql = $timeNorm . ':00';
-    if ($date < date('Y-m-d')) {
-        respond(['error' => 'Date cannot be in the past'], 400);
+    if (is_past_date($date)) {
+        respond(['error' => 'You cannot book an appointment in the past.'], 400);
     }
-    if ($date === date('Y-m-d')) {
-        $nowM = parse_time_to_minutes(date('H:i'));
-        $slotM = parse_time_to_minutes($timeNorm);
-        if ($slotM <= $nowM) {
-            respond(['error' => 'Selected time has already passed today.'], 400);
-        }
+    if (is_past_time($date, $timeNorm)) {
+        respond(['error' => 'You cannot book an appointment for a time that has already passed.'], 400);
     }
 
     $service_id   = isset($body['service_id']) ? (int) $body['service_id'] : 0;

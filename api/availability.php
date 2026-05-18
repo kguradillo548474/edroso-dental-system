@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/availability_slots.php';
+require_once __DIR__ . '/../includes/booking_datetime.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     respond(['error' => 'Method not allowed'], 405);
@@ -15,6 +16,9 @@ $date      = trim((string) ($_GET['date'] ?? ''));
 
 if ($dentistId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     respond(['error' => 'dentist_id and date (YYYY-MM-DD) are required'], 400);
+}
+if (is_past_date($date)) {
+    respond(['error' => 'You cannot book an appointment in the past.', 'slots' => []], 400);
 }
 
 $db = getDB();
