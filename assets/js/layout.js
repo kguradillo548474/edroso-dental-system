@@ -1,5 +1,10 @@
+/** Last active page key passed to getSidebarHTML (used when checkAuth refreshes the rail). */
+window.__adminSidebarActivePage = window.__adminSidebarActivePage || 'dashboard';
+
 // Returns sidebar HTML with the given active page highlighted
 function getSidebarHTML(activePage) {
+    window.__adminSidebarActivePage = activePage || window.__adminSidebarActivePage;
+    const showAuthLogs = window.__edrosoStaffRole === 'admin';
     const navItems = [
         { href: 'dashboard.html', icon: 'fa-chart-line', label: 'Dashboard', key: 'dashboard' },
         { href: 'patients.html', icon: 'fa-user-injured', label: 'Patients', key: 'patients' },
@@ -41,14 +46,14 @@ function getSidebarHTML(activePage) {
             <div>
                 <p class="text-xs font-medium text-gray-400 mb-3 pl-2 uppercase tracking-wider">System</p>
                 <ul class="space-y-1">
-                    <li>
+                    ${showAuthLogs ? `<li>
                         <a href="auth-logs.html" class="flex items-center p-2 rounded-lg font-medium transition-colors group relative
                             ${activePage === 'auth_logs' ? 'text-secondary bg-primary/10' : 'text-secondary hover:bg-neutral-dark'}">
                             <div class="w-5 h-5 flex items-center justify-center mr-3 ${activePage === 'auth_logs' ? 'text-primary' : 'text-gray-500 group-hover:text-primary'}"><i class="fas fa-shield-alt"></i></div>
                             <span>Login activity</span>
                             ${activePage === 'auth_logs' ? '<span class="w-1 h-5 bg-primary rounded-full absolute right-0"></span>' : ''}
                         </a>
-                    </li>
+                    </li>` : ''}
                     <li>
                         <a href="settings.html" class="flex items-center p-2 rounded-lg font-medium transition-colors group relative
                             ${activePage === 'settings' ? 'text-secondary bg-primary/10' : 'text-secondary hover:bg-neutral-dark'}">

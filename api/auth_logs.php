@@ -1,13 +1,11 @@
 <?php
 /**
- * Staff-only: read authentication attempt log (staff + patient portal sign-ins).
+ * Admin-only: read authentication attempt log (staff + patient portal sign-ins).
  */
 require_once '../includes/db.php';
 require_once '../includes/auth_login_log.php';
 
-if (empty($_SESSION['user_id'])) {
-    respond(['error' => 'Unauthorized. Please log in.', 'redirect' => 'login.html'], 401);
-}
+requireAdminSession();
 
 $action = trim((string) ($_GET['action'] ?? 'list'));
 if ($action !== 'list') {

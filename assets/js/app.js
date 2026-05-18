@@ -107,6 +107,14 @@ async function checkAuth() {
 
         document.querySelectorAll('#userName, #adminName').forEach(el => el.textContent = name);
         document.querySelectorAll('#userInitials').forEach(el => el.textContent = initials);
+        window.__edrosoStaffRole = data.user.role === 'staff' ? 'staff' : 'admin';
+        const sidebarMount = document.getElementById('sidebarMount');
+        if (sidebarMount && typeof getSidebarHTML === 'function') {
+            sidebarMount.innerHTML = getSidebarHTML(window.__adminSidebarActivePage || 'dashboard');
+            if (typeof window.initAdminSidebar === 'function') {
+                window.initAdminSidebar();
+            }
+        }
         initAutoLogoutFromSession(data.auto_logout_minutes);
         return data.user;
     } catch (e) {

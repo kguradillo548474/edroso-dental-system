@@ -127,7 +127,11 @@ document.getElementById('refreshBtn').addEventListener('click', function () { lo
 document.getElementById('loadMoreBtn').addEventListener('click', function () { loadLogs(false); });
 
 (async function () {
-    await checkAuth();
+    const user = await checkAuth();
+    if (user && user.role === 'staff') {
+        window.location.href = 'dashboard.html';
+        return;
+    }
     await loadLogs(true);
 })();
 </script>
