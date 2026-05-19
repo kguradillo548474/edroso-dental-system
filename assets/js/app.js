@@ -468,10 +468,23 @@ function confirmDialog(message, options) {
 // ── Boot ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
-    document.querySelectorAll('#logoutButton').forEach(btn =>
-        btn.addEventListener('click', e => { e.preventDefault(); logout(); })
-    );
 });
+
+/*
+ * Logout: bind via delegation so it survives sidebar re-renders
+ * (checkAuth swaps the rail HTML after the page loads).
+ */
+if (!window.__edrosoLogoutBound) {
+    window.__edrosoLogoutBound = true;
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('#logoutButton');
+        if (!btn) {
+            return;
+        }
+        e.preventDefault();
+        logout();
+    });
+}
 
 /* After all DOMContentLoaded handlers (e.g. inline layout inject), bind sidebar if the first pass missed. */
 setTimeout(function () {
