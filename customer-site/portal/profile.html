@@ -27,72 +27,93 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-[#f5f0eb] font-sans text-[#2c3e50] antialiased hidden" id="portalProfileBody">
-    <header class="sticky top-0 z-20 border-b border-black/5 bg-white/95 backdrop-blur-sm shadow-sm">
-        <div class="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <span class="text-lg font-bold tracking-tight text-[#22ccb2]">Edroso Dental</span>
-            <div class="flex items-center gap-3 sm:gap-4">
-                <span id="navUserName" class="max-w-[8rem] truncate text-sm font-medium text-[#2c3e50] sm:max-w-xs"></span>
-                <button type="button" id="logoutBtn" class="rounded-lg border border-[#22ccb2]/40 bg-[#22ccb2] px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1bab96] focus:outline-none focus:ring-2 focus:ring-[#22ccb2] focus:ring-offset-2">
-                    Logout
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
-        <div class="border-b border-default">
-            <ul class="flex flex-wrap justify-center gap-2 sm:gap-6 -mb-px text-base sm:text-lg font-semibold text-center text-body">
+<body class="min-h-screen bg-[#fbfcfd] font-sans text-[#0f172a] antialiased hidden" id="portalProfileBody">
+    <header class="sticky top-0 z-20 border-b border-slate-200/70 bg-white/95 shadow-sm backdrop-blur-sm">
+        <div class="mx-auto grid max-w-5xl grid-cols-1 items-center gap-3 px-4 py-2.5 sm:px-6 lg:grid-cols-[1fr_auto_1fr]">
+            <a href="dashboard.html" class="inline-flex items-center gap-2 justify-self-start" aria-label="Edroso Dental Clinic">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#22ccb2] text-xs font-bold tracking-tight text-white shadow-sm">ED</span>
+                <span class="text-sm font-bold tracking-tight text-[#22ccb2]">Edroso Dental Clinic</span>
+            </a>
+            <nav aria-label="Portal navigation" class="justify-self-center">
+                <ul class="-mb-2.5 flex flex-wrap justify-center gap-5 text-center text-sm text-body">
                 <li>
-                    <a href="profile.html" data-tab="profile.html" class="inline-flex items-center justify-center px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold border-b-2 border-transparent rounded-t-base hover:text-fg-brand hover:border-brand/60 hover:bg-brand/5 transition-colors group text-body">
-                        <svg class="w-5 h-5 me-2 text-body group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <a href="profile.html" data-tab="profile.html" class="inline-flex items-center justify-center gap-1.5 px-3 py-3.5 text-sm font-medium border-b-2 border-transparent hover:text-fg-brand hover:border-brand/60 transition-colors group text-body">
+                        <svg class="h-3.5 w-3.5 text-body group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                         </svg>
                         Profile
                     </a>
                 </li>
                 <li>
-                    <a href="dashboard.html" data-tab="dashboard.html" class="inline-flex items-center justify-center px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold border-b-2 border-transparent rounded-t-base hover:text-fg-brand hover:border-brand/60 hover:bg-brand/5 transition-colors group text-body">
-                        <svg class="w-5 h-5 me-2 text-body group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <a href="dashboard.html" data-tab="dashboard.html" class="inline-flex items-center justify-center gap-1.5 px-3 py-3.5 text-sm font-medium border-b-2 border-transparent hover:text-fg-brand hover:border-brand/60 transition-colors group text-body">
+                        <svg class="h-3.5 w-3.5 text-body group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/>
                         </svg>
                         Appointments
                     </a>
                 </li>
                 <li>
-                    <a href="settings.html" data-tab="settings.html" class="inline-flex items-center justify-center px-6 sm:px-8 py-4 text-base sm:text-lg font-semibold border-b-2 border-transparent rounded-t-base hover:text-fg-brand hover:border-brand/60 hover:bg-brand/5 transition-colors group text-body">
-                        <svg class="w-5 h-5 me-2 text-body group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <a href="settings.html" data-tab="settings.html" class="inline-flex items-center justify-center gap-1.5 px-3 py-3.5 text-sm font-medium border-b-2 border-transparent hover:text-fg-brand hover:border-brand/60 transition-colors group text-body">
+                        <svg class="h-3.5 w-3.5 text-body group-hover:text-fg-brand" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"/>
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                         </svg>
                         Settings
                     </a>
                 </li>
-            </ul>
+                </ul>
+            </nav>
+            <div class="flex items-center justify-self-start gap-3 lg:justify-self-end">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#22ccb2] text-xs font-bold text-white" id="navUserInitial">P</span>
+                <span id="navUserName" class="max-w-[9rem] truncate text-xs font-semibold text-[#0f172a] sm:max-w-[12rem]"></span>
+                <button type="button" id="logoutBtn" class="rounded-lg bg-[#159b8c] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0f766e] focus:outline-none focus:ring-2 focus:ring-[#22ccb2] focus:ring-offset-2">
+                    Logout
+                </button>
+            </div>
         </div>
         <script src="assets/js/portal-tabs.js"></script>
+    </header>
 
-        <section class="mt-8 rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8">
-            <h1 class="text-xl font-bold text-[#2c3e50] sm:text-2xl">Your profile</h1>
-            <p class="mt-1 text-sm text-gray-600">Contact details from your portal account.</p>
-            <dl class="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-                <div>
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-gray-400">Full name</dt>
-                    <dd id="pfName" class="mt-1 font-medium text-[#2c3e50]">—</dd>
+    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+        <section class="flex flex-wrap items-center gap-5">
+            <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#22ccb2] to-[#087f78] text-2xl font-bold text-white shadow-sm" id="profileInitial">P</div>
+            <div>
+                <h1 id="profileHeadingName" class="text-3xl font-bold tracking-tight text-[#0f172a]">Your profile</h1>
+                <p class="mt-1 text-sm text-slate-500">Contact details from your portal account.</p>
+            </div>
+        </section>
+
+        <section class="mt-7">
+            <dl class="grid gap-4 text-sm sm:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Full name</dt>
+                    <dd id="pfName" class="mt-2 font-semibold text-[#0f172a]">—</dd>
                 </div>
-                <div>
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-gray-400">Email</dt>
-                    <dd id="pfEmail" class="mt-1 font-medium text-[#2c3e50]">—</dd>
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Email</dt>
+                    <dd id="pfEmail" class="mt-2 break-words font-semibold text-[#0f172a]">—</dd>
                 </div>
-                <div>
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-gray-400">Phone</dt>
-                    <dd id="pfPhone" class="mt-1 font-medium text-[#2c3e50]">—</dd>
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Phone</dt>
+                    <dd id="pfPhone" class="mt-2 font-semibold text-[#0f172a]">—</dd>
                 </div>
-                <div>
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-gray-400">Date of birth</dt>
-                    <dd id="pfDob" class="mt-1 font-medium text-[#2c3e50]">—</dd>
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Date of birth</dt>
+                    <dd id="pfDob" class="mt-2 font-semibold text-[#0f172a]">—</dd>
                 </div>
             </dl>
+        </section>
+
+        <section class="mt-7 rounded-2xl border border-[#dff4f1] bg-[#f7fffd] p-6 shadow-sm">
+            <div class="flex items-start gap-4">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#159b8c] text-white">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>
+                </span>
+                <div>
+                    <h2 class="text-base font-bold text-[#0f172a]">Account status</h2>
+                    <p class="mt-1 text-sm text-slate-600">Your account is active and ready for appointment booking.</p>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -125,7 +146,15 @@
                     window.location.replace('../login.html');
                     return;
                 }
-                document.getElementById('navUserName').textContent = data.name || 'Patient';
+                const displayName = data.name || 'Patient';
+                const initial = String(displayName).trim().charAt(0).toUpperCase() || 'P';
+                document.getElementById('navUserName').textContent = displayName;
+                const navInitial = document.getElementById('navUserInitial');
+                if (navInitial) navInitial.textContent = initial;
+                const profileInitial = document.getElementById('profileInitial');
+                if (profileInitial) profileInitial.textContent = initial;
+                const heading = document.getElementById('profileHeadingName');
+                if (heading && data.name) heading.textContent = data.name;
                 document.getElementById('pfName').textContent = data.name || '—';
                 document.getElementById('pfEmail').textContent = data.email || '—';
                 document.getElementById('pfPhone').textContent = data.phone || '—';

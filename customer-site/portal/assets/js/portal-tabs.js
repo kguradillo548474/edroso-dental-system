@@ -11,14 +11,12 @@
                 'inline-flex',
                 'items-center',
                 'justify-center',
-                'px-6',
-                'sm:px-8',
-                'py-4',
-                'text-base',
-                'sm:text-lg',
-                'font-semibold',
+                'gap-1.5',
+                'px-3',
+                'py-3.5',
+                'text-sm',
+                'font-medium',
                 'border-b-2',
-                'rounded-t-base',
                 'transition-colors',
                 'group',
             ];
@@ -40,8 +38,8 @@
                 icon.setAttribute(
                     'class',
                     isActive
-                        ? 'w-5 h-5 me-2 text-fg-brand'
-                        : 'w-5 h-5 me-2 text-body group-hover:text-fg-brand'
+                        ? 'h-3.5 w-3.5 text-fg-brand'
+                        : 'h-3.5 w-3.5 text-body group-hover:text-fg-brand'
                 );
             }
         });

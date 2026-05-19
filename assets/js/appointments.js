@@ -971,8 +971,7 @@ document.getElementById('newApptBtn').addEventListener('click', async () => {
     buildModalSearchableSelects();
     document.getElementById('fDate').value = formatYMDLocal(selDate);
     setAppointmentDateMin(true);
-    const firstProc = buildProcedureOptionsFromServices()[0];
-    setModalSelectValues('', '', (firstProc && firstProc.value) || PROCEDURE_OPTIONS[0].value);
+    setModalSelectValues('', '', '');
     const crwNew = document.getElementById('apptChangeReasonWrap');
     if (crwNew) {
         crwNew.classList.add('hidden');
@@ -1065,6 +1064,10 @@ document.getElementById('apptForm').addEventListener('submit', async function (e
     clearApptConflictError();
     const id = document.getElementById('apptId').value;
     const raw = document.getElementById('fProcedure').value;
+    if (!String(raw || '').trim()) {
+        showToast('Please select a procedure or service.', 'error');
+        return;
+    }
     const parts = raw.split('|');
     const body = {
         patient_id: document.getElementById('fPatient').value,
