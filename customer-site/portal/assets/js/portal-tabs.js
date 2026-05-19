@@ -11,9 +11,15 @@
                 'inline-flex',
                 'items-center',
                 'justify-center',
-                'p-4',
-                'border-b',
+                'px-6',
+                'sm:px-8',
+                'py-4',
+                'text-base',
+                'sm:text-lg',
+                'font-semibold',
+                'border-b-2',
                 'rounded-t-base',
+                'transition-colors',
                 'group',
             ];
             if (isActive) {
@@ -24,7 +30,8 @@
                     'border-transparent',
                     'text-body',
                     'hover:text-fg-brand',
-                    'hover:border-brand',
+                    'hover:border-brand/60',
+                    'hover:bg-brand/5',
                 ]).join(' ');
                 tab.removeAttribute('aria-current');
             }
@@ -33,8 +40,8 @@
                 icon.setAttribute(
                     'class',
                     isActive
-                        ? 'w-4 h-4 me-2 text-fg-brand'
-                        : 'w-4 h-4 me-2 text-body group-hover:text-fg-brand'
+                        ? 'w-5 h-5 me-2 text-fg-brand'
+                        : 'w-5 h-5 me-2 text-body group-hover:text-fg-brand'
                 );
             }
         });

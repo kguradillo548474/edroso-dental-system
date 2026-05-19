@@ -408,6 +408,7 @@ function admin_appointment_to_portal_list_row(
     $adminId = (int) ($ap['id'] ?? 0);
     $proc    = trim((string) ($ap['procedure_name'] ?? ''));
     $portalSt = map_admin_status_to_portal_status((string) ($ap['status'] ?? ''));
+    $rawNotes = trim((string) ($ap['notes'] ?? ''));
     return [
         'id'                       => portal_list_id_for_admin_appointment($adminId),
         'portal_user_id'           => null,
@@ -428,6 +429,7 @@ function admin_appointment_to_portal_list_row(
         'dentist_name'             => $ap['dentist_name'] ?? null,
         'dentist_specialization'   => $ap['dentist_specialization'] ?? null,
         'procedure_name'           => $proc !== '' ? $proc : 'Appointment',
+        'notes'                    => $rawNotes,
         'clinic_updated_at'        => !empty($ap['slot_modified_at']) ? $ap['slot_modified_at'] : null,
     ];
 }
