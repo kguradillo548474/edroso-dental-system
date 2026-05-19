@@ -31,7 +31,7 @@ function getSidebarHTML(activePage) {
     <aside class="w-64 bg-white shadow-lg fixed h-full z-30 flex flex-col transition-transform duration-200 -translate-x-full md:translate-x-0" id="sidebar">
         <div class="flex items-center p-4 border-b border-neutral admin-sidebar-brand-row">
             <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-2 admin-sidebar-logo" aria-hidden="true">
-                <i class="fas fa-tooth text-lg admin-sidebar-logo-icon"></i>
+                <img src="../assets/images/tooth-icon.png" alt="" class="w-8 h-8 rounded-md object-cover">
             </div>
             <div>
                 <span class="font-bold text-lg admin-sidebar-brand-name">Edroso</span>

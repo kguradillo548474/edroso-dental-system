@@ -217,13 +217,15 @@
             : '';
         const w = window.open('', '_blank', 'width=440,height=720');
         if (!w) { showToast('Allow pop-ups to print receipt.', 'warning'); return; }
+        const toothIconUrl = new URL('../assets/images/tooth-icon.png', window.location.href).href;
         w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Receipt — ${escHtml(p.patient_name || 'Payment')}</title>
             <style>
                 @page{margin:12mm}*{box-sizing:border-box}
                 body{font-family:"Segoe UI",system-ui,sans-serif;margin:0;padding:20px;background:#eef2f6;color:#2c3e50;-webkit-print-color-adjust:exact;print-color-adjust:exact}
                 .sheet{max-width:380px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(44,62,80,.12);border:1px solid #e3e8ef}
                 .brand{background:linear-gradient(135deg,#22ccb2,#1bab96);color:#fff;text-align:center;padding:22px 20px 18px}
-                .brand__icon{width:48px;height:48px;margin:0 auto 10px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+                .brand__icon{width:48px;height:48px;margin:0 auto 10px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;overflow:hidden}
+                .brand__icon img{width:100%;height:100%;object-fit:cover}
                 .brand h1{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
                 .brand p{margin:4px 0 0;font-size:.78rem;opacity:.92;line-height:1.45}
                 .rc-body{padding:18px 20px 20px}
@@ -251,7 +253,7 @@
             </style></head><body>
             <article class="sheet">
                 <header class="brand">
-                    <div class="brand__icon" aria-hidden="true">🦷</div>
+                    <div class="brand__icon" aria-hidden="true"><img src="${toothIconUrl}" alt=""></div>
                     <h1>${escHtml(h.clinic_name || 'Dental Clinic')}</h1>
                     ${h.dentist_name ? `<p>${escHtml(h.dentist_name)}</p>` : ''}
                     ${h.prc_license ? `<p>PRC ${escHtml(h.prc_license)}</p>` : ''}
