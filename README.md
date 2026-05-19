@@ -265,7 +265,7 @@ Keep secrets out of Git (`.env` is ignored if you introduce one); do not commit 
 | Username | Password   | Role  |
 |----------|------------|-------|
 | `admin`  | `password` | Admin |
-| `edroso` | `password` | Admin |
+| `staff`  | `password1` | Staff |
 
 If you ran **`sql/upgrade_staff_recovery_alerts.sql`**, a demo **`staff`** / **`password`** user may also exist for reception-style testing.
 
