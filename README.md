@@ -2,6 +2,25 @@
 
 Full-stack **PHP + MySQL** web application for clinic staff and patients: admin workflows, public marketing site, and a logged-in **patient portal** (register, book, view/cancel appointments).
 
+### Changelog (2026-05-19)
+
+This release adds **CSV exports**, **date-range payment filtering**, role-aware **Login activity**, and a refreshed **patient portal** (renamed Appointments tab, standardized layout, past-appointment detail modal).
+
+| Area | What changed |
+|------|----------------|
+| **CSV exports** | New **`api/export.php`** + **`includes/export_helpers.php`** stream filtered CSVs. **`downloadExport(params)`** in **`assets/js/app.js`** drives the buttons. **Dashboard** (`admin/dashboard.html`) → **Export summary** (admin only) and per-status **Export CSV** on the Appointment Overview. **Appointments** (`admin/appointments.html`) → **Export** button respects the active tab (today / upcoming / completed / cancelled / picked day), dentist filter, and search. **Payments** (`admin/payments.html`) → **Export CSV** mirrors the active status, search, and **date range**; the export endpoint is **admin-only** (`sessionUserRole()` check) and the button is hidden for staff. |
+| **Payments date range** | `admin/payments.html` gains **From / To** date inputs and a **Clear** button. **`api/payments.php`** GET accepts `from` / `to` and applies them to both the list and the **stats** strip via `COALESCE(payment_date, DATE(created_at))`. Export filename embeds the range (e.g. `payments_from_2026-05-01_to_2026-05-18_….csv`). |
+| **Login activity → admin only** | **`api/auth_logs.php`** now uses **`requireAdminSession()`** (403 for staff). **`assets/js/layout.js`** hides the **Login activity** sidebar link unless `window.__edrosoStaffRole === 'admin'`. **`assets/js/app.js` `checkAuth()`** exposes the role and re-renders the sidebar so staff never see (or keep) the entry after login. **`admin/auth-logs.html`** redirects staff to `dashboard.html` if they hit the URL directly. |
+| **Logout (admin & staff) fix** | `assets/js/app.js` switched the **`#logoutButton`** click handler to **event delegation** on `document`. The previous direct binding was wiped when `checkAuth()` re-rendered the sidebar to apply the role-aware Login activity link; delegation survives any sidebar re-render. |
+| **Customer portal — tab rename + centering** | **Dashboard → Appointments** (label and `<title>` only; **filename `dashboard.html` is preserved** so existing redirects from `confirmation.html`, `register.html`, `login.html`, and `app.js` keep working). Tab strip is now centered (`justify-center`), wider (`px-6 sm:px-8 py-4`), larger (`text-base sm:text-lg font-semibold`), and uses `border-b-2` with stronger hover background. **`customer-site/portal/assets/js/portal-tabs.js`** updated to match. All three portal pages (`profile.html`, `dashboard.html`, `settings.html`) share the same `<main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">` wrapper; Settings’ two cards no longer cap at `max-w-lg`. |
+| **Past appointments detail modal (portal)** | Each past row in **`customer-site/portal/dashboard.html`** is now a clickable button (`cursor-pointer`) carrying `data-patient`, `data-dentist`, `data-service`, `data-date`, `data-time`, `data-status`, `data-notes`. New modal element + delegated click handler opens with fade + scale animation; closes via **✕**, **Close**, backdrop click, or **Escape**. Missing fields render **N/A**. **`api/patient_appointments.php`** adds **`notes`** to admin-mirror list rows so the modal can show notes for both portal-side and staff-created appointments. |
+| **Marketing nav polish (prior in series)** | “Back to site” link on **`customer-site/login.html`** and **`register.html`**; the **Book** CTA (`customer-site/assets/js/booking-cta.js`) sends logged-out users to **login** (not register); **`customer-site/services.html`** drops the per-card payment-method pills. |
+| **Admin UX cleanup (prior in series)** | Payment receipt print layout refreshed in **`admin/payments.html`** (teal header, card layout, badges, totals, thank-you footer). **`admin/settings.html`** replaces native `confirm()` / `prompt()` for service add/delete with a styled **Add service** modal and the shared **`confirmDialog(message, { title, confirmLabel })`** in `assets/js/app.js`. Add-service validation rejects empty submissions with inline messages. |
+| **Booking — past date/time guards (prior in series)** | **`includes/booking_datetime.php`** adds Manila-timezone helpers (`is_past_date`, `is_past_time`). **`includes/availability_slots.php`** marks past slots `available: false, past: true`. **`api/patient_appointments.php`** + **`api/availability.php`** reject past dates/times with explicit errors. **`customer-site/portal/assets/js/book.js`** disables past slots client-side (`.slot-pill--past`) with cache-busted CSS/HTML. |
+| **`add_appointment_indexes.sql`** | Header clarifies it is **legacy-only** — the same indexes already ship in **`sql/database.sql`** and **`sql/patient_appointments.sql`**. |
+
+Runtime upload directories (gitignored or local): **`assets/uploads/payment_qr/`**, **`assets/uploads/portal_gcash/`**.
+
 ### Changelog (2026-05-11)
 
 This release aligns **staff admin**, **APIs**, **portal booking**, and **documentation** with the current tree. Highlights:
@@ -34,7 +53,7 @@ flowchart LR
     F[Forgot password]
   end
   subgraph portal["Patient portal"]
-    D[Dashboard]
+    D["Appointments tab<br/>(dashboard.html)"]
     B[Book appointment]
     P[Profile / Settings]
   end
@@ -44,11 +63,14 @@ flowchart LR
     DN[Dentists]
     PM[Payments]
     ST[Settings]
+    AL["Login activity<br/>(admin only)"]
   end
   subgraph api["JSON APIs"]
     PA[patient_auth.php]
     PP[patient_appointments.php]
     AP[appointments.php + …]
+    EX["export.php<br/>(CSV)"]
+    LG["auth_logs.php<br/>(admin)"]
   end
   M --> R
   R --> PA
@@ -57,9 +79,13 @@ flowchart LR
   portal --> PA
   portal --> PP
   staff --> AP
+  staff --> EX
+  AL --> LG
   PP <--> DB[(MySQL edroso_dental)]
   AP <--> DB
   PA <--> DB
+  EX <--> DB
+  LG <--> DB
 ```
 
 **Two audiences, one database**
@@ -78,17 +104,41 @@ Portal bookings live in **`patient_appointments`** and can be **mirrored** into 
 ### Staff day-to-day
 
 1. Open **Admin login** → session created (optional **forgot password / username** recovery for **staff** accounts via OTP on the login page).
-2. **Dashboard** — quick stats, recent activity, and **staff alerts** when credential recovery or similar events occur.
-3. **Appointments** — create/edit/cancel; filter by dentist; **click stat cards** to filter by today / upcoming / completed / cancelled; list ties to `appointments` + patients + dentists.
-4. **Patients / Dentists / Payments / Settings** — maintain master data and clinic settings.
+2. **Dashboard** — quick stats, recent activity, and **staff alerts** when credential recovery or similar events occur. Admins also get an **Export summary** button on the welcome banner and a per-status **Export CSV** on the Appointment Overview funnel.
+3. **Appointments** — create/edit/cancel; filter by dentist; **click stat cards** to filter by today / upcoming / completed / cancelled; **Export CSV** mirrors the visible filters.
+4. **Patients / Dentists / Payments / Settings** — maintain master data and clinic settings. **Payments** has a **From / To** date range and an admin-only **Export CSV** that follows the active filters.
+5. **Login activity** — admin-only audit of staff + portal sign-in attempts (the link is hidden from the staff sidebar; direct URL access redirects to the dashboard).
+
+### Role differences (admin vs staff)
+
+| Capability | Admin | Staff |
+|------------|:-----:|:----:|
+| Dashboard / Appointments / Patients / Dentists / Payments / Settings | Yes | Yes |
+| Login activity (sidebar + page) | Yes | **Hidden / 403** |
+| Dashboard summary CSV (`api/export.php?resource=dashboard_summary`) | Yes | Hidden |
+| Payments CSV (`api/export.php?resource=payments`) | Yes | **Hidden / 403** |
+| Appointments CSV (`api/export.php?resource=appointments`) | Yes | Yes |
+| Cashless QR upload, certain settings sections | Yes | Restricted (see `staff-settings-restricted`) |
+
+### CSV exports
+
+All exports stream straight from MySQL via **`api/export.php`** (helpers in **`includes/export_helpers.php`**) and are triggered from the UI through **`downloadExport(params)`** in `assets/js/app.js`. Every endpoint requires a valid staff session; `payments` and `dashboard_summary` additionally require the **admin** role.
+
+| Resource | Query params | Where it’s used | Role |
+|----------|--------------|-----------------|------|
+| `appointments` | `status` (`today` \| `upcoming` \| `completed` \| `cancelled` \| `all`), `date`, `dentist_id`, `search` | `admin/appointments.html` **Export** button (mirrors active tab + filters); `admin/dashboard.html` per-status **Export CSV** on the Appointment Overview | Staff + Admin |
+| `payments` | `status` (`all` \| `paid` \| `pending` \| `overdue`), `from`, `to`, `search` | `admin/payments.html` **Export CSV** (uses the visible date range and search) | **Admin only** |
+| `dashboard_summary` | `range` (e.g. `today`, `week`, `month`) | `admin/dashboard.html` **Export summary** button on the welcome banner | **Admin only** |
+
+Filenames embed the active filters where useful, e.g. `payments_from_2026-05-01_to_2026-05-18_paid_….csv`. The staff sidebar / UI hides admin-only buttons automatically via `window.__edrosoStaffRole`.
 
 ### Patient: discover → account → book
 
-1. Browse **`customer-site/`** (home, services, contact). Footer/clinic text can be driven by **`api/settings.php?public=1`** (see `customer-site/assets/js/main.js`).
-2. **Register** (`register.html`) → `portal_users` (+ optional mirror row in `patients`).
+1. Browse **`customer-site/`** (home, services, contact). Footer/clinic text can be driven by **`api/settings.php?public=1`** (see `customer-site/assets/js/main.js`). The **Book** CTA sends logged-out users to **login** (with `?next=` so they land on `portal/book.html` after sign-in).
+2. **Register** (`register.html`) → `portal_users` (+ optional mirror row in `patients`). Marketing **login** and **register** pages have a **Back to site** link.
 3. **Login** → portal session.
-4. **Book** (`portal/book.html`) → `patient_appointments` (pending/scheduled); availability comes from dentist schedules and existing bookings.
-5. **Dashboard** — upcoming/past/cancelled; cancel eligible rows via API. Admin bookings for the same person appear here when email matches **`patients`**.
+4. **Book** (`portal/book.html`) → `patient_appointments` (pending/scheduled). Availability comes from dentist schedules and existing bookings; **past dates/times are blocked** both client- and server-side (Manila timezone via `includes/booking_datetime.php`).
+5. **Appointments tab** (`portal/dashboard.html`) — upcoming + past + cancelled; cancel eligible rows via API. Admin bookings for the same person are merged when email matches **`patients`**. Each **past row is clickable** and opens a detail modal (patient, dentist, service, date, time, status, notes; **N/A** when missing). The modal closes via **✕**, **Close**, backdrop, or **Escape**.
 
 ### Patient: password recovery (no real email required)
 
@@ -109,8 +159,9 @@ edroso-dental-system/
 ├── admin/                      ← Staff UI (login, dashboard, appointments, auth-logs, …)
 ├── api/
 │   ├── auth.php                ← Staff login / session / recovery / me (auto_logout)
-│   ├── auth_logs.php           ← Staff: login audit log (JSON)
+│   ├── auth_logs.php           ← Admin-only: login audit log (JSON)
 │   ├── admin_alerts.php        ← Staff: in-app alerts
+│   ├── export.php              ← Staff/admin: CSV exports (appointments, payments [admin], dashboard_summary [admin])
 │   ├── patient_auth.php        ← Portal register / login / logout / forgot / reset / recovery
 │   ├── patient_appointments.php ← Portal bookings, lists, cancel, availability, GCash proof
 │   ├── appointments.php        ← Staff appointments API
@@ -123,10 +174,11 @@ edroso-dental-system/
 │   ├── login.html, register.html, forgot-password.html
 │   ├── assets/                 ← customer-site CSS/JS/images + booking-cta.js, main.js
 │   └── portal/
-│       ├── dashboard.html, book.html, profile.html, settings.html
-│       ├── reset-password.html
-│       └── …
-├── includes/                   ← db.php, config.php (optional), csrf.php, auth_login_log.php, portal mirror/sync helpers
+│       ├── dashboard.html      ← Appointments tab (filename kept for redirects)
+│       ├── book.html, profile.html, settings.html
+│       ├── confirmation.html, reset-password.html
+│       └── assets/js/portal-tabs.js  ← Tab active-state styling
+├── includes/                   ← db.php, config.php (optional), csrf.php, auth_login_log.php, booking_datetime.php, availability_slots.php, export_helpers.php, portal mirror/sync helpers
 ├── sql/
 │   ├── database.sql            ← Core clinic schema (run first)
 │   ├── portal_users.sql        ← portal_users (run after core DB)
@@ -195,13 +247,14 @@ Keep secrets out of Git (`.env` is ignored if you introduce one); do not commit 
 | Area | Example URL |
 |------|----------------|
 | Staff login | `http://localhost/edroso-dental-system/admin/login.html` |
-| Staff login activity (after login) | `…/admin/auth-logs.html` |
+| Admin login activity (admin only) | `…/admin/auth-logs.html` |
+| CSV exports (admin / staff) | `…/api/export.php?resource=appointments\|payments\|dashboard_summary&format=csv` |
 | Customer home | `http://localhost/edroso-dental-system/customer-site/index.html` |
 | Register | `…/customer-site/register.html` |
 | Login | `…/customer-site/login.html` |
 | Forgot password | `…/customer-site/forgot-password.html` |
 | Reset password (code or security answer) | `…/customer-site/portal/reset-password.html` |
-| Portal dashboard | `…/customer-site/portal/dashboard.html` |
+| Portal **Appointments** tab | `…/customer-site/portal/dashboard.html` |
 | Book (requires login) | `…/customer-site/portal/book.html` |
 | Portal settings (password + security question) | `…/customer-site/portal/settings.html` |
 
@@ -224,15 +277,15 @@ Change passwords in production.
 
 | Module | Features |
 |--------|----------|
-| **Dashboard** | Stats, funnel, recent appointments; staff **alerts** strip when present |
+| **Dashboard** | Stats, funnel, recent appointments; staff **alerts** strip; **Export summary** + per-status **Export CSV** (admin) |
 | **Patients** | CRUD, search, filters, pagination |
-| **Appointments** | List/calendar, CRUD, dentist filters; **stat-card filters**; portal row sync on slot edits; ties to main `appointments` |
+| **Appointments** | List/calendar, CRUD, dentist filters; **stat-card filters**; portal row sync on slot edits; **Export CSV** follows the active filters |
 | **Dentists** | Profiles, photos, schedules |
-| **Payments** | CRUD, stats, filters |
-| **Settings** | Clinic configuration; **cashless QR** upload; portal referral list; session **auto-logout** minutes |
-| **Login activity** | Read-only audit of staff + portal sign-in attempts (`api/auth_logs.php`) |
-| **Auth** | Session-based staff login via `api/auth.php`; **OTP recovery** for staff; login **audit log** |
-| **Exports** | CSV via `api/export.php` — dashboard summary, appointments (filtered), payments (admin) |
+| **Payments** | CRUD, stats, status + **date range (From / To)** filters; **Export CSV** (admin only, range-aware filename) |
+| **Settings** | Clinic configuration; **Add service** modal with validation; **cashless QR** upload (custom confirm dialogs); portal referral list; session **auto-logout** minutes |
+| **Login activity** | **Admin-only** read-only audit of staff + portal sign-in attempts (`api/auth_logs.php`) |
+| **Auth** | Session-based staff login via `api/auth.php`; **OTP recovery** for staff; login **audit log**; logout button uses **event delegation** so it survives sidebar re-renders |
+| **Exports** | CSV via `api/export.php` — `appointments` (staff/admin), `payments` (admin, status + range + search), `dashboard_summary` (admin) |
 
 ---
 
@@ -246,10 +299,11 @@ Change passwords in production.
 
 **Login redirect:** `login.html?next=portal/book.html` — after login, redirect to a path under `customer-site/` (validated in client/server patterns such as `portal/*.html`).
 
-### Booking and dashboard
+### Booking and the Appointments tab
 
-- **`portal/book.html`** — date/time/dentist, submits to **`api/patient_appointments.php`** (JSON). Requires portal session. When **GCash** is selected, the flow can require a **reference** and/or **proof-of-payment** upload (`upload_gcash_proof`), depending on clinic options.
-- **`portal/dashboard.html`** — lists portal rows + matching staff appointments; cancel where allowed.
+- **`portal/book.html`** — date/time/dentist, submits to **`api/patient_appointments.php`** (JSON). Requires portal session. When **GCash** is selected, the flow can require a **reference** and/or **proof-of-payment** upload (`upload_gcash_proof`), depending on clinic options. **Past dates and past times are blocked** client-side (`book.js`) and rejected server-side via `includes/booking_datetime.php` (Manila timezone).
+- **`portal/dashboard.html`** (now labeled **Appointments** in the navigation) — lists portal rows + matching staff appointments; cancel where allowed. **Past rows are clickable** and open a **detail modal** populated from `data-*` attributes (patient, dentist, service, date, time, status, **notes**; missing values render as **N/A**). The modal supports fade + scale animation and closes via **✕**, **Close**, backdrop, or **Escape**. Admin-mirrored rows include the `notes` column (see `admin_appointment_to_portal_list_row()` in `api/patient_appointments.php`).
+- **Tab styling** — Profile / Appointments / Settings tabs are centered (`justify-center`) and enlarged (`px-6 sm:px-8 py-4`, `text-base sm:text-lg font-semibold`, `border-b-2`); active state managed by `customer-site/portal/assets/js/portal-tabs.js`. All three portal pages share the same `max-w-4xl` `<main>` wrapper.
 
 ### Password and recovery (`api/patient_auth.php`)
 
@@ -274,9 +328,10 @@ Change passwords in production.
 | File | Role |
 |------|------|
 | `api/patient_auth.php` | Auth, profile, password, recovery, CSRF; writes **`auth_login_log`** on portal login |
-| `api/patient_appointments.php` | Availability, create booking, list by status, cancel; GCash proof upload; merges admin appointments for linked patients |
-| `api/auth_logs.php` | Staff-only: paginated **`auth_login_log`** (`?realm=staff` \| `portal`) |
+| `api/patient_appointments.php` | Availability, create booking, list by status, cancel; GCash proof upload; merges admin appointments for linked patients (admin-mirror rows now include `notes` for the past-appointment modal) |
+| `api/auth_logs.php` | **Admin-only** (`requireAdminSession`): paginated **`auth_login_log`** (`?realm=staff` \| `portal`) |
 | `api/admin_alerts.php` | Staff: list / mark-read **`admin_staff_alerts`** |
+| `api/export.php` | Staff/admin CSV streaming (delegates to `includes/export_helpers.php`); `payments` and `dashboard_summary` are admin-only |
 | `api/portal_options.php` | Public (no staff session): payment methods, referral sources, optional **cashless QR** path for booking UI |
 
 ---
@@ -327,6 +382,15 @@ Grant privileges, e.g. `GRANT ALL ON edroso_dental.* TO 'root'@'localhost';`
 
 **Admin sidebar overlaps content or hamburger does nothing**  
 Hard-refresh the staff page (`Ctrl+F5`) so `assets/css/style.css` and `assets/js/app.js` reload. Confirm the page includes both `#sidebar` and `#main-content`. If the shell is injected asynchronously, call `window.initAdminSidebar()` after injection.
+
+**Logout button does nothing after the sidebar re-renders**  
+Hard-refresh once so `assets/js/app.js` reloads. The handler now uses **event delegation** on `document` (`#logoutButton`), so it should survive `checkAuth()` re-renders. If a custom page replaces the sidebar wholesale, ensure the new markup still contains an element with `id="logoutButton"`.
+
+**Login activity link still visible for a staff account**  
+`assets/js/app.js`’s `checkAuth()` decides visibility based on `window.__edrosoStaffRole`. Log out and back in so the role flag is set before `assets/js/layout.js` rebuilds the sidebar. Direct visits to `admin/auth-logs.html` redirect non-admins to the dashboard.
+
+**Payments export returns 403**  
+Only admin sessions can export `payments` and `dashboard_summary`. Use an admin account or hit `?resource=appointments` instead.
 
 ---
 
