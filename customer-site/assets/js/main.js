@@ -126,6 +126,10 @@ function renderNav() {
                 `<a href="${l.href}" class="block py-2 px-3 rounded-lg ${navLinkClassMobile(active(l.file))}">${l.label}</a>`
         )
         .join('');
+    const loginButton =
+        '<a href="login.html" class="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-dark)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2">Login</a>';
+    const mobileLoginButton =
+        '<a href="login.html" class="mt-2 block rounded-lg bg-[var(--primary)] px-3 py-2 text-center font-semibold text-white hover:bg-[var(--primary-dark)]">Login</a>';
 
     return `
 <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
@@ -136,6 +140,7 @@ function renderNav() {
       </a>
       <div class="hidden md:flex items-center gap-8 text-sm font-medium">
         ${desktop}
+        ${loginButton}
       </div>
       <button type="button" id="nav-toggle" class="md:hidden inline-flex items-center justify-center p-2 rounded-lg text-[var(--secondary)] hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" aria-controls="mobile-menu" aria-expanded="false" aria-label="Toggle menu">
         <span class="sr-only">Open menu</span>
@@ -146,6 +151,7 @@ function renderNav() {
     </div>
     <div id="mobile-menu" class="md:hidden hidden border-t border-gray-100 py-3 text-sm font-medium">
       ${mobile}
+      ${mobileLoginButton}
     </div>
   </nav>
 </header>`;
