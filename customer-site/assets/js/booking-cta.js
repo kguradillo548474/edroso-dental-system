@@ -16,7 +16,7 @@
 
     function loginUrlWithNext() {
         var base = isPortalPage() ? '../login.html' : 'login.html';
-        return base + '?next=' + encodeURIComponent('portal/book.html');
+        return base + '?next=' + encodeURIComponent('portal/dashboard.html');
     }
 
     function handleBookClick(e) {

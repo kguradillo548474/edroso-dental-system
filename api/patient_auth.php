@@ -207,6 +207,70 @@ function portal_me_payload(): ?array
     ];
 }
 
+/**
+ * Best-effort mirror of portal phone updates to admin patients table.
+ */
+function sync_portal_phone_to_patient_row(mysqli $db, int $uid, string $email, string $phone): void
+{
+    if (!ensure_patients_table($db)) {
+        return;
+    }
+    $phoneNorm = preg_replace('/\s+/', '', $phone);
+    if ($phoneNorm === '') {
+        return;
+    }
+
+    $patientId = 0;
+    if ($email !== '') {
+        $byEmail = $db->prepare('SELECT id FROM patients WHERE email = ? LIMIT 1');
+        if ($byEmail) {
+            $byEmail->bind_param('s', $email);
+            $byEmail->execute();
+            $row = $byEmail->get_result()->fetch_assoc();
+            $byEmail->close();
+            if ($row) {
+                $patientId = (int) ($row['id'] ?? 0);
+            }
+        }
+    }
+
+    if ($patientId <= 0) {
+        $pu = $db->prepare('SELECT email FROM portal_users WHERE id = ? LIMIT 1');
+        if ($pu) {
+            $pu->bind_param('i', $uid);
+            $pu->execute();
+            $prow = $pu->get_result()->fetch_assoc();
+            $pu->close();
+            $portalEmail = trim((string) ($prow['email'] ?? ''));
+            if ($portalEmail !== '') {
+                $byPortalEmail = $db->prepare('SELECT id FROM patients WHERE email = ? LIMIT 1');
+                if ($byPortalEmail) {
+                    $byPortalEmail->bind_param('s', $portalEmail);
+                    $byPortalEmail->execute();
+                    $row = $byPortalEmail->get_result()->fetch_assoc();
+                    $byPortalEmail->close();
+                    if ($row) {
+                        $patientId = (int) ($row['id'] ?? 0);
+                    }
+                }
+            }
+        }
+    }
+
+    if ($patientId <= 0) {
+        return;
+    }
+    $up = $db->prepare('UPDATE patients SET phone = ? WHERE id = ?');
+    if (!$up) {
+        return;
+    }
+    $up->bind_param('si', $phoneNorm, $patientId);
+    if (!$up->execute()) {
+        error_log('patient_auth profile phone mirror update failed: ' . $up->error);
+    }
+    $up->close();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'me') {
     $p = portal_me_payload();
     if ($p !== null) {
@@ -494,6 +558,45 @@ if ($action === 'logout') {
     }
     session_destroy();
     respond(['success' => true]);
+}
+
+if ($action === 'update_profile_phone') {
+    if (empty($_SESSION['portal_user_id'])) {
+        respond(['error' => 'Unauthorized'], 401);
+    }
+    $uid = (int) $_SESSION['portal_user_id'];
+    $phone = normalize_portal_phone_for_validation((string) ($body['phone'] ?? ''));
+    $phoneErr = validate_portal_phone($phone);
+    if ($phoneErr !== null) {
+        respond(['error' => $phoneErr, 'field' => 'phone'], 422);
+    }
+
+    $db = getDB();
+    if (!ensure_portal_users_table($db)) {
+        respond(['error' => 'Database error'], 500);
+    }
+    $email = '';
+    $sel = $db->prepare('SELECT email FROM portal_users WHERE id = ? LIMIT 1');
+    if ($sel) {
+        $sel->bind_param('i', $uid);
+        $sel->execute();
+        $row = $sel->get_result()->fetch_assoc();
+        $sel->close();
+        $email = trim((string) ($row['email'] ?? ''));
+    }
+
+    $up = $db->prepare('UPDATE portal_users SET phone = ? WHERE id = ?');
+    if (!$up) {
+        respond(['error' => 'Database error'], 500);
+    }
+    $up->bind_param('si', $phone, $uid);
+    if (!$up->execute()) {
+        respond(['error' => 'Could not update phone number.'], 500);
+    }
+    $up->close();
+
+    sync_portal_phone_to_patient_row($db, $uid, $email, $phone);
+    respond(['success' => true, 'phone' => $phone]);
 }
 
 function ensure_reset_tokens_table(mysqli $db): bool

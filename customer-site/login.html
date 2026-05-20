@@ -119,7 +119,8 @@
             if (!raw || typeof raw !== 'string') return null;
             if (raw.indexOf('://') !== -1 || raw.indexOf('//') === 0) return null;
             if (!/^portal\/[a-zA-Z0-9._/-]+\.html$/.test(raw)) return null;
-            return raw;
+            // Always route patients to appointments after login.
+            return 'portal/dashboard.html';
         }
 
         (async function checkSession() {

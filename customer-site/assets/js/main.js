@@ -135,8 +135,11 @@ function renderNav() {
 <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
   <nav class="max-w-7xl mx-auto px-4 sm:px-6" aria-label="Primary">
     <div class="flex items-center justify-between h-16">
-      <a href="index.html" class="text-xl font-bold tracking-tight text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors">
-        Edroso Dental
+      <a href="index.html" class="inline-flex items-center gap-2 text-xl font-bold tracking-tight text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors">
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)] shadow-sm" aria-hidden="true">
+          <img src="../assets/images/tooth-icon.png" alt="" class="h-7 w-7 rounded-md object-cover" loading="lazy" decoding="async">
+        </span>
+        <span>Edroso Dental</span>
       </a>
       <div class="hidden md:flex items-center gap-8 text-sm font-medium">
         ${desktop}
