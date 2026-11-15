@@ -1,7 +1,8 @@
 FROM php:8.2-apache
 
 RUN docker-php-ext-install mysqli \
-    && a2enmod headers expires rewrite
+    && a2dismod mpm_event mpm_worker 2>/dev/null || true \
+    && a2enmod mpm_prefork headers expires rewrite
 
 # Keep uploaded clinic files available when Railway mounts a persistent volume.
 COPY assets/uploads/ /opt/edroso-seed-uploads/
