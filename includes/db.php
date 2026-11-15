@@ -8,6 +8,7 @@ if (is_file($configPath)) {
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
 if (!defined('DB_USER')) define('DB_USER', 'root');
 if (!defined('DB_PASS')) define('DB_PASS', '');
+if (!defined('DB_PORT')) define('DB_PORT', 3306);
 if (!defined('DB_NAME')) define('DB_NAME', 'edroso_dental');
 if (!defined('APP_ENV')) define('APP_ENV', 'development');
 
@@ -36,7 +37,7 @@ if (!defined('EDROSO_SKIP_JSON_HEADERS') || !EDROSO_SKIP_JSON_HEADERS) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 
     $origin = isset($_SERVER['HTTP_ORIGIN']) ? trim((string) $_SERVER['HTTP_ORIGIN']) : '';
-    $host    = isset($_SERVER['HTTP_HOST']) ? strtolower(preg_replace('/:\d+$/', '', (string) $_SERVER['HTTP_HOST'])) : '';
+    $host    = isset($_SERVER['HTTP_HOST']) ? strtolower(preg_replace('/:\\d+$/', '', (string) $_SERVER['HTTP_HOST'])) : '';
     $originHost = $origin !== '' ? parse_url($origin, PHP_URL_HOST) : null;
     if ($originHost) {
         $originHost = strtolower((string) $originHost);
@@ -57,7 +58,7 @@ if (!defined('EDROSO_SKIP_JSON_HEADERS') || !EDROSO_SKIP_JSON_HEADERS) {
 function getDB() {
     static $conn = null;
     if ($conn && !$conn->connect_error) return $conn;
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
     if ($conn->connect_error) {
         http_response_code(500);
         echo json_encode(

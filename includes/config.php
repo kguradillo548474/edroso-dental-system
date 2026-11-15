@@ -2,28 +2,32 @@
 /**
  * Edroso Dental Clinic — Environment Configuration
  *
- * Copy this file or edit directly. Protected from web access by includes/.htaccess.
- * Values here override all hardcoded defaults in db.php.
+ * Local development keeps the XAMPP defaults. Production values are read
+ * from environment variables (Railway MySQL variables are supported).
  */
 
-// ── Environment ──────────────────────────────────────────────────────────
-// 'development' or 'production'
-define('APP_ENV', 'development');
-
-// ── Database ─────────────────────────────────────────────────────────────
-if (APP_ENV === 'production') {
-    define('DB_HOST', 'localhost');
-    define('DB_USER', 'edroso_prod');
-    define('DB_PASS', '');            // ← set a real password for production
-    define('DB_NAME', 'edroso_dental');
-} else {
-    define('DB_HOST', 'localhost');
-    define('DB_USER', 'root');
-    define('DB_PASS', '');
-    define('DB_NAME', 'edroso_dental');
+$appEnv = getenv('APP_ENV') ?: 'development';
+if (!defined('APP_ENV')) {
+    define('APP_ENV', $appEnv);
 }
 
-// ── Error Reporting ──────────────────────────────────────────────────────
+// Database: Railway's MySQL service exposes MYSQLHOST/MYSQLPORT/etc.
+if (!defined('DB_HOST')) {
+    define('DB_HOST', getenv('MYSQLHOST') ?: (getenv('DB_HOST') ?: 'localhost'));
+}
+if (!defined('DB_PORT')) {
+    define('DB_PORT', (int) (getenv('MYSQLPORT') ?: (getenv('DB_PORT') ?: 3306)));
+}
+if (!defined('DB_USER')) {
+    define('DB_USER', getenv('MYSQLUSER') ?: (getenv('DB_USER') ?: 'root'));
+}
+if (!defined('DB_PASS')) {
+    define('DB_PASS', getenv('MYSQLPASSWORD') ?: (getenv('DB_PASS') ?: ''));
+}
+if (!defined('DB_NAME')) {
+    define('DB_NAME', getenv('MYSQLDATABASE') ?: (getenv('DB_NAME') ?: 'edroso_dental'));
+}
+
 if (APP_ENV === 'production') {
     error_reporting(0);
     ini_set('display_errors', '0');
@@ -33,6 +37,7 @@ if (APP_ENV === 'production') {
     ini_set('display_errors', '1');
 }
 
-// ── Security ─────────────────────────────────────────────────────────────
-// Allow destructive operations (backup download, test scripts) only in dev
-define('ALLOW_DESTRUCTIVE_OPS', APP_ENV !== 'production');
+// Destructive/test-only operations are disabled in production.
+if (!defined('ALLOW_DESTRUCTIVE_OPS')) {
+    define('ALLOW_DESTRUCTIVE_OPS', APP_ENV !== 'production');
+}
